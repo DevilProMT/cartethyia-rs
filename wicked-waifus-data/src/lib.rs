@@ -1,3 +1,6 @@
+use std::fs::File;
+use std::io::BufReader;
+
 use paste::paste;
 
 pub use misc_data::*;
@@ -32,8 +35,9 @@ macro_rules! json_data {
 
         fn load_json_data(base_path: &str) -> Result<(), LoadDataError> {
             $(paste! {
-                let json_content = std::fs::read_to_string(&format!("{}/{}.json", base_path, stringify!($table_type)))?;
-                let _ = [<$table_type:snake _data>]::TABLE.set(serde_json::from_str(&json_content)?);
+                let file = File::open(&format!("{}/{}.json", base_path, stringify!($table_type)))?;
+                let reader = BufReader::new(file);
+                let _ = [<$table_type:snake _data>]::TABLE.set(serde_json::from_reader(reader)?);
             })*
 
             Ok(())
@@ -68,11 +72,11 @@ macro_rules! json_hash_table_data {
 
         fn load_json_hash_table_data(base_path: &str) -> Result<(), LoadDataError> {
             $(paste! {
-                let json_content = std::fs::read_to_string(&format!("{}/{}.json", base_path, stringify!($table_type)))?;
+                let file = File::open(&format!("{}/{}.json", base_path, stringify!($table_type)))?;
+                let reader = BufReader::new(file);
                 let _ = [<$table_type:snake _data>]::TABLE.set(
-                    serde_json::from_str::<Vec<[<$table_type:snake _data>]::Data>>(&json_content)?
-                        .iter()
-                        .cloned()
+                    serde_json::from_reader::<BufReader<File>, Vec<[<$table_type:snake _data>]::Data>>(reader)?
+                        .into_iter()
                         .map(|element| (element.$key_param, element))
                         .collect::<std::collections::HashMap<_, _>>()
                 );
@@ -115,17 +119,22 @@ json_hash_table_data! {
 mod textmap;
 
 pub mod text_map_data {
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
+    use std::fs::File;
+    use std::io::BufReader;
     use std::sync::OnceLock;
 
     use crate::LoadDataError;
     use crate::textmap::TextMapData;
+    use crate::gacha_view_info_data;
 
     static EMPTY: OnceLock<HashMap<String, String>> = OnceLock::new();
     static TABLE: OnceLock<HashMap<String, HashMap<String, String>>> = OnceLock::new();
 
     pub fn load_textmaps(base_path: &str) -> Result<(), LoadDataError> {
-        let _ = EMPTY.set(HashMap::new());
+        // TODO: Ideally we would expose a function here to allow other components to add to the
+        //  filter, since right now only gacha uses it, we can do this
+        let filters = get_filters();
         let languages = std::fs::read_dir(base_path)?
             .filter_map(|entry| entry.ok())
             .filter(|entry| entry.path().is_dir())
@@ -133,14 +142,13 @@ pub mod text_map_data {
         let mut result: HashMap<String, HashMap<String, String>> = HashMap::new();
         for language in languages {
             let lang_id = language.file_name().to_str().unwrap().to_string();
-            let json_content = std::fs::read_to_string(
-                &format!("{base_path}/{lang_id}/multi_text/MultiText.json")
-            )?;
+            let file = File::open(&format!("{base_path}/{lang_id}/multi_text/MultiText.json"))?;
+            let reader = BufReader::new(file);
             result.insert(
                 lang_id,
-                serde_json::from_str::<Vec<TextMapData>>(&json_content)?
-                    .iter()
-                    .cloned()
+                serde_json::from_reader::<BufReader<File>, Vec<TextMapData>>(reader)?
+                    .into_iter()
+                    .filter(|element| filters.contains(&element.id))
                     .map(|element| (element.id, element.content))
                     .collect::<HashMap<_, _>>(),
             );
@@ -151,7 +159,9 @@ pub mod text_map_data {
 
     pub fn get_textmap(language: i32) -> &'static HashMap<String, String> {
         let (text_code, _audio_code) = get_language_from_i32(language);
-        TABLE.get().unwrap().get(text_code).unwrap_or(EMPTY.get().unwrap())
+        TABLE.get_or_init(|| HashMap::new())
+            .get(text_code)
+            .unwrap_or(EMPTY.get_or_init(|| HashMap::new()))
     }
 
     fn get_language_from_i32(language: i32) -> (&'static str, &'static str) {
@@ -171,5 +181,14 @@ pub mod text_map_data {
             12 => ("th", "en"),
             _ => ("en", "en"),
         }
+    }
+
+    fn get_filters() -> HashSet<String> {
+        let mut filters = HashSet::new();
+        for gacha_view_info in gacha_view_info_data::iter() {
+            filters.insert(gacha_view_info.summary_title.clone());
+            filters.insert(gacha_view_info.summary_describe.clone());
+        }
+        filters
     }
 }

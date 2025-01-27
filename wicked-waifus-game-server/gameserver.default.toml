@@ -11,3 +11,8 @@ addr = "tcp://127.0.0.1:10004"
 
 [gateway_end_point]
 addr = "tcp://127.0.0.1:10003"
+
+[game_server_config]
+load_textmaps = true
+# Do not change yet, issues to be solved
+quadrant_size = 1000000

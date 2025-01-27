@@ -10,6 +10,13 @@ pub struct ServiceConfig {
     pub database: DatabaseSettings,
     pub service_end_point: ServiceEndPoint,
     pub gateway_end_point: ServiceEndPoint,
+    pub game_server_config: GameServerConfig,
+}
+
+#[derive(Deserialize)]
+pub struct GameServerConfig {
+    pub load_textmaps: bool,
+    pub quadrant_size: f32,
 }
 
 impl TomlConfig for ServiceConfig {

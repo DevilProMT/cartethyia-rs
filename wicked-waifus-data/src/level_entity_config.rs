@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use crate::{ComponentsData, RawVectorData};
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct LevelEntityConfigData {
     pub id: i32,

@@ -1,4 +1,4 @@
-# Camellya
+# Wicked Waifus
 
 ![Screenshot](screenshot.png)
 
@@ -68,7 +68,7 @@ db_name = "wicked_waifus_db"
 The data files: Logic JSON collections (`data/assets/game-data/BinData`) and config/hotpatch indexes (`data/assets/config-server`, `data/assets/hotpatch-server`) are included in this repository. Keep in mind that you need to have the `data` subdirectory in current working directory.
 
 #### Connecting
-You have to download client of Wuthering Waves Beta 1.3, apply the [wicked-waifus-win-patch](https://git.xeondev.com/wickedwaifus/wicked-waifus-win-patch/releases) and add necessary `.pak` files, which you can get here: [wicked-waifus-pak](https://git.xeondev.com/wickedwaifus/wicked-waifus-pak)
+You have to download client of Wuthering Waves Beta 2.1, apply the [wicked-waifus-win-patch](https://git.xeondev.com/wickedwaifus/wicked-waifus-win-patch/releases) and add necessary `.pak` files, which you can get here: [wicked-waifus-pak](https://git.xeondev.com/wickedwaifus/wicked-waifus-pak)
 
 ### Troubleshooting
 [Visit our discord](https://discord.gg/reversedrooms) if you have any questions/issues

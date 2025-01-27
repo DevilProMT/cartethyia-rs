@@ -3,6 +3,11 @@ use std::sync::OnceLock;
 
 use wicked_waifus_data::LevelEntityConfigData;
 
+struct StaticConfig {
+    edge_size: f32,
+    edge_check: f32,
+}
+
 #[derive(Clone)]
 struct MapBounds {
     x_max: f32,
@@ -25,11 +30,8 @@ pub struct Map {
     quadrants: HashMap<u64, Quadrant>,
 }
 
-// TODO: Make it configurable?
-const EDGE_SIZE: f32 = 1000000f32;
-const EDGE_CHECK: f32 = EDGE_SIZE * 3.0f32;
-
 pub(crate) static MAP_TABLE: OnceLock<HashMap<i32, Map>> = OnceLock::new();
+pub(crate) static STATIC_CONFIG: OnceLock<StaticConfig> = OnceLock::new();
 
 impl MapBounds {
     fn find_max_min(slice: &[&LevelEntityConfigData]) -> (Self, bool) {
@@ -48,7 +50,8 @@ impl MapBounds {
             if entity.transform[0].y > y_max { y_max = entity.transform[0].y }
         }
 
-        if (f32::abs(x_max - x_min) < EDGE_CHECK) || (f32::abs(y_max - y_min) < EDGE_CHECK) {
+        let static_config = STATIC_CONFIG.get().unwrap();
+        if (f32::abs(x_max - x_min) < static_config.edge_check) || (f32::abs(y_max - y_min) < static_config.edge_check) {
             // TODO: Handle this special case, since all entities fit, no need for quadrant
 
             // Move everything to positive coordinates to prevent corner cases
@@ -58,16 +61,16 @@ impl MapBounds {
             (MapBounds { x_max, x_min, x_translate, y_max, y_min, y_translate }, false)
         } else {
             // Round to edge
-            x_max = round_max_coordinate(x_max, EDGE_SIZE);
-            x_min = round_min_coordinate(x_min, EDGE_SIZE);
-            y_max = round_max_coordinate(y_max, EDGE_SIZE);
-            y_min = round_min_coordinate(y_min, EDGE_SIZE);
+            x_max = round_max_coordinate(x_max, static_config.edge_size);
+            x_min = round_min_coordinate(x_min, static_config.edge_size);
+            y_max = round_max_coordinate(y_max, static_config.edge_size);
+            y_min = round_min_coordinate(y_min, static_config.edge_size);
 
             // Adding bounds to prevent OOB when moving
-            x_max += EDGE_SIZE;
-            x_min -= EDGE_SIZE;
-            y_max += EDGE_SIZE;
-            y_min -= EDGE_SIZE;
+            x_max += static_config.edge_size;
+            x_min -= static_config.edge_size;
+            y_max += static_config.edge_size;
+            y_min -= static_config.edge_size;
 
             // Move everything to positive coordinates to prevent corner cases
             let (x_max, x_min, x_translate) = recenter_map(x_max, x_min);
@@ -126,17 +129,18 @@ impl Map {
     }
 
     pub fn get_quadrant_id(&self, x: f32, y: f32) -> u64 {
+        let edge_size = STATIC_CONFIG.get().unwrap().edge_size;
         let width: u64 = unsafe {
             f32::to_int_unchecked(
                 f32::trunc(
-                    (self.bounds.x_max + self.bounds.x_translate - x) / EDGE_SIZE
+                    (self.bounds.x_max + self.bounds.x_translate - x) / edge_size
                 )
             )
         };
         let height: u64 = unsafe {
             f32::to_int_unchecked(
                 f32::trunc(
-                    (self.bounds.y_max + self.bounds.y_translate - y) / EDGE_SIZE
+                    (self.bounds.y_max + self.bounds.y_translate - y) / edge_size
                 )
             )
         };
@@ -169,7 +173,11 @@ pub fn maps_iter() -> std::collections::hash_map::Iter<'static, i32, Map> {
     MAP_TABLE.get().unwrap().iter()
 }
 
-pub fn initialize_quadrant_system() {
+pub fn initialize_quadrant_system(edge_size: f32) {
+    let _ = STATIC_CONFIG.set(StaticConfig {
+        edge_size,
+        edge_check: edge_size * 3.0f32,
+    });
     let mut map_grouped_entities: HashMap<i32, Vec<&LevelEntityConfigData>> = HashMap::new();
     for (_, entity) in wicked_waifus_data::level_entity_config_data::iter() {
         map_grouped_entities.entry(entity.map_id).or_default().push(entity);
@@ -178,8 +186,8 @@ pub fn initialize_quadrant_system() {
     let mut maps: HashMap<i32, Map> = HashMap::new();
     for (map_id, entities) in map_grouped_entities {
         let (bounds, _quadrant_enabled) = MapBounds::find_max_min(&entities[..]);
-        let width = unsafe { f32::to_int_unchecked((bounds.x_max - bounds.x_min) / EDGE_SIZE) };
-        let height = unsafe { f32::to_int_unchecked((bounds.y_max - bounds.y_min) / EDGE_SIZE) };
+        let width = unsafe { f32::to_int_unchecked((bounds.x_max - bounds.x_min) / edge_size) };
+        let height = unsafe { f32::to_int_unchecked((bounds.y_max - bounds.y_min) / edge_size) };
         let map = maps.entry(map_id).or_insert(
             Map {
                 bounds: bounds.clone(),
