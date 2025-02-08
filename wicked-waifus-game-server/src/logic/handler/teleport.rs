@@ -1,7 +1,8 @@
-use wicked_waifus_protocol::{ErrorCode, TeleportDataRequest, TeleportDataResponse, TeleportNotify, TeleportReason, TeleportTransferRequest, TeleportTransferResponse, TeleportFinishRequest, TeleportFinishResponse, TransitionOptionPb, TransitionType};
+use wicked_waifus_protocol::{ErrorCode, TeleportDataRequest, TeleportDataResponse, TeleportNotify, TeleportReason, TeleportTransferRequest, TeleportTransferResponse, TeleportFinishRequest, TeleportFinishResponse, TransitionOptionPb, TransitionType, LeaveSceneNotify, JoinSceneNotify};
 use wicked_waifus_data::{ComponentsData, level_entity_config_data, RawVectorData, TeleportComponent};
 
 use crate::logic::player::Player;
+use crate::logic::utils::world_util;
 
 pub fn on_teleport_data_request(
     _player: &mut Player,
@@ -58,22 +59,34 @@ pub fn on_teleport_transfer_request(
         response.yaw = 0f32;
         response.roll = 0f32;
 
-        player.notify(TeleportNotify {
-            map_id: teleport.map_id,
-            pos_x: x,
-            pos_y: y,
-            pos_z: z,
-            pos_a: 0.0,
-            reason: TeleportReason::Gm.into(),
-            game_ctx: None,
-            transition_option: Some(
-                TransitionOptionPb {
-                    transition_type: TransitionType::Empty.into(),
-                    p4s: None,
-                },
-            ),
-            disable_auto_fade: false,
-        });
+        // TODO: simplify (player.world.curr_map_id, palyer.basic_info.cur_map_id and player.location.instance_id)
+
+        if player.location.instance_id == teleport.map_id {
+            player.notify(TeleportNotify {
+                map_id: teleport.map_id,
+                pos_x: x,
+                pos_y: y,
+                pos_z: z,
+                pos_a: 0.0,
+                reason: TeleportReason::Gm.into(),
+                game_ctx: None,
+                transition_option: Some(TransitionOptionPb::default()),
+                disable_auto_fade: false,
+            });
+        } else {
+            // remove entity
+            player.notify(LeaveSceneNotify {
+                player_id: player.basic_info.id,
+                scene_id: "".to_string(),
+                transition_option: Some(TransitionOptionPb::default()),
+            });
+            let scene_info = world_util::build_scene_information(&player);
+            player.notify(JoinSceneNotify {
+                scene_info: Some(scene_info),
+                max_entity_id: i64::MAX,
+                transition_option: Some(TransitionOptionPb::default()),
+            });
+        }
     }
 }
 
