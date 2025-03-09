@@ -2,6 +2,7 @@ use wicked_waifus_protocol::{
     player_attr, BasicInfoNotify, PlayerAttr, PlayerAttrKey, PlayerAttrType,
 };
 use wicked_waifus_protocol_internal::PlayerBasicData;
+use crate::logic::player::player_inventory::PlayerInventory;
 
 pub struct PlayerBasicInfo {
     pub id: i32,
@@ -16,18 +17,28 @@ pub struct PlayerBasicInfo {
 }
 
 impl PlayerBasicInfo {
-    pub fn build_notify(&self) -> BasicInfoNotify {
+    pub fn build_notify(&self, inventory: &PlayerInventory) -> BasicInfoNotify {
         BasicInfoNotify {
             id: self.id,
             attributes: vec![
-                build_str_attr(PlayerAttrKey::Name, self.name.as_str()),
                 build_int_attr(PlayerAttrKey::Level, self.level),
                 build_int_attr(PlayerAttrKey::Exp, self.exp),
-                build_int_attr(PlayerAttrKey::Sex, self.sex),
+                build_int_attr(PlayerAttrKey::Coin, inventory.get_shell_credits()),
+                build_int_attr(PlayerAttrKey::RareCoin, inventory.get_astrite()),
                 build_int_attr(PlayerAttrKey::HeadPhoto, self.head_photo),
                 build_int_attr(PlayerAttrKey::HeadFrame, self.head_frame),
+                build_int_attr(PlayerAttrKey::AreaId, 1), // TODO:
+                build_str_attr(PlayerAttrKey::Name, self.name.as_str()),
+                build_str_attr(PlayerAttrKey::Sign, ""), // TODO:
+                build_int_attr(PlayerAttrKey::Sex, self.sex),
+                build_int_attr(PlayerAttrKey::OriginWorldLevel, 1), // TODO:
+                build_int_attr(PlayerAttrKey::CurWorldLevel, 1), // TODO:
+                build_int_attr(PlayerAttrKey::WorldLevelTimeStamp, 0), // TODO:
+                build_int_attr(PlayerAttrKey::CashCoin, inventory.get_lunite()),
+                build_int_attr(PlayerAttrKey::WorldPermission, 0), // TODO:
             ],
-            // TODO: Impl card unlock list
+            card_unlock_list: vec![], // TODO: 80060000
+            cur_card_id: 0, // TODO: 80060000
             ..Default::default()
         }
     }
@@ -57,6 +68,22 @@ impl PlayerBasicInfo {
             head_frame: self.head_frame,
             cur_map_id: self.cur_map_id,
             role_show_list: self.role_show_list.clone(),
+        }
+    }
+}
+
+impl Default for PlayerBasicInfo {
+    fn default() -> Self {
+        Self {
+            id: 0,
+            name: "".to_string(),
+            sex: 0,
+            level: 0,
+            exp: 0,
+            head_photo: 0,
+            head_frame: 0,
+            cur_map_id: 0,
+            role_show_list: vec![],
         }
     }
 }

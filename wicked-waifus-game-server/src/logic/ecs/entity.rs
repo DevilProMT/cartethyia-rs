@@ -124,12 +124,12 @@ impl<'comp> EntityBuilder<'comp> {
         Self(entity, components)
     }
 
-    pub fn with(self, component: ComponentContainer) -> Self {
+    pub fn with(&mut self, component: ComponentContainer) -> &mut Self {
         self.1.push(RefCell::new(component));
         self
     }
 
-    pub fn build(self) -> Entity {
+    pub fn build(&self) -> Entity {
         self.0
     }
 }

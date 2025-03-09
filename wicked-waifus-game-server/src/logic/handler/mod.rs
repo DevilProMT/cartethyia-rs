@@ -1,9 +1,13 @@
+pub use advice::*;
+pub use animal::*;
 pub use chat::*;
 pub use combat::*;
+pub use coop::*;
 pub use dummy::*;
 pub use entity::*;
 pub use friend::*;
 pub use gacha::*;
+pub use inventory::*;
 pub use guide::*;
 pub use lord_gym::*;
 pub use mail::*;
@@ -16,13 +20,17 @@ pub use skill::*;
 pub use teleport::*;
 pub use tutorial::*;
 
+mod advice;
+mod animal;
 mod chat;
 mod combat;
+mod coop;
 mod dummy;
 mod entity;
 mod friend;
 mod gacha;
 mod guide;
+mod inventory;
 mod lord_gym;
 mod mail;
 mod map;
@@ -103,25 +111,42 @@ macro_rules! handle_push {
 }
 
 handle_request! {
+    // Advice
+    Advice;
+    AdviceSet;
+
+    // Animal
+    AnimalDie;
+    AnimalDrop;
+    AnimalDestroy;
+
     // Chat  (TODO: Review TODOs)
     PrivateChat;
-    PrivateChatOperate;
+    PrivateChatData;
     PrivateChatHistory;
+    PrivateChatOperate;
 
     // Combat (TODO: Review this on_..., port some from go)
     CombatSendPack, combat_message;
     // CombatMessagePostInfo, combat_message; // TODO: Review this niggerianism, Encrypted shadow data
 
-    // Friend (TODO: Implement them)
-    FriendApplySend;
-    FriendRecentlyTeam;
-    PlayerBasicInfoGet;
+    // Coop
+    LobbyList;
 
     // Entity (TODO: Review this on_..., port some from go)
     EntityActive;
     EntityOnLanded;
     EntityPosition;
-    EntityLoadComplete;
+    EntityAccessRange;
+    EntityInteract;
+    EntityFollowTrack;
+    GetRewardTreasureBox;
+
+    // Friend (TODO: Implement them)
+    FriendAll;
+    // FriendApplySend;
+    // FriendRecentlyTeam;
+    PlayerBasicInfoGet;
 
     // Gacha
     Gacha;
@@ -131,6 +156,14 @@ handle_request! {
     // Guide
     GuideInfo;
     GuideTrigger;
+    GuideFinish;
+
+    // Inventory
+    NormalItem;
+    WeaponItem;
+    PhantomItem;
+    ValidTimeItem;
+    ItemExchangeInfo;
 
     // Lord Gym (TODO: Review this on_..., port some from go)
     LordGymInfo;
@@ -140,21 +173,25 @@ handle_request! {
 
     // Map
     DarkCoastDelivery;
+    MapCancelTrace;
+    MapTrace;
+    MapTraceInfo;
     MapUnlockFieldInfo;
+    PlayerAccessEffectArea;
+
     // LevelPlayStateListAsyncRequest // Example: "x9l": [{"inst_id": 902,"level_play_ids": [166700009,157700000]}]
 
     // Misc (TODO: Review this on_..., port some from go)
-    // Advice;
     InputSetting;
     InputSettingUpdate;
     LanguageSettingUpdate;
     ServerPlayStationPlayOnlyState;
 
     // Player (TODO: Review this on_..., port some from go)
-    // PlayerMotion;
     // ModifySignature;
     // ModifyName;
     // ChangeHeadPhoto;
+    PlayerTitleData;
 
     // Role (TODO: Review this on_..., port some from go)
     RoleShowListUpdate;
@@ -175,7 +212,7 @@ handle_request! {
     // PayInfo;
     // PayGiftInfo;
     // PayShopItemUpdate;
-    // PayShopInfo;
+    PayShopInfo;
     // PayShopUpdate;
     // MonthCard;
 
@@ -195,11 +232,17 @@ handle_request! {
 
     // Tutorial
     TutorialInfo;
-    // TutorialUnlock;
+    TutorialReceive;
+    TutorialUnlock;
 
     // TODO: Implement all this properly, workaround for game enter
+    EntityPatrolStop;
+    InitRange;
+    Activity;
+    BattlePass;
+    SlashAndTowerInfo;
+
     // Role
-    RoleVisionRecommendData;
     RoleVisionRecommendData;
     RoleVisionRecommendAttr;
     PlayerMotion;
@@ -223,23 +266,12 @@ handle_request! {
     VisionEquipGroupInfo;
     UpdatePlayStationBlockAccount;
     AdventureManual;
-    MapTraceInfo;
     Tower;
     ExploreProgress;
     ReportData;
     UpdateVoxelEnv;
     SimpleTrackReportAsync;
     TowerSeasonUpdate;
-
-    // Friend
-    FriendAll;
-
-    // Inventory
-    NormalItem;
-    WeaponItem;
-    PhantomItem;
-    ValidTimeItem;
-    ItemExchangeInfo;
 }
 
 handle_push! {

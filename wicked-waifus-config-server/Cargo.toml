@@ -18,5 +18,6 @@ anyhow.workspace = true
 tracing.workspace = true
 
 # Internal
+wicked-waifus-asset-updater.workspace = true
 wicked-waifus-commons.workspace = true
 wicked-waifus-http.workspace = true

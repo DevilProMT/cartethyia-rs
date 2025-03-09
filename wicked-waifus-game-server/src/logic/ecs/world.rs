@@ -1,13 +1,16 @@
 use super::component::ComponentContainer;
 use super::entity::{Entity, EntityBuilder, EntityManager};
+use crate::logic::ecs::buf::BufManager;
 use crate::logic::player::InWorldPlayer;
 use std::cell::{RefCell, RefMut};
 use std::collections::hash_map::{Keys, Values};
 use std::collections::HashMap;
+use wicked_waifus_protocol::FightBuffInformation;
 
 pub struct WorldEntity {
     components: HashMap<i32, Vec<RefCell<ComponentContainer>>>,
     entity_manager: EntityManager,
+    buff_manager: BufManager,
 }
 
 pub struct World {
@@ -52,13 +55,11 @@ impl World {
 }
 
 impl WorldEntity {
-    pub fn create_entity(
-        &mut self,
-        config_id: i32,
-        entity_type: i32,
-        map_id: i32,
-    ) -> EntityBuilder {
-        let entity = self.entity_manager.create(config_id, entity_type, map_id);
+    pub fn create_entity(&mut self, config_id: i32, entity_type: i32, map_id: i32) -> Entity {
+        self.entity_manager.create(config_id, entity_type, map_id)
+    }
+
+    pub fn create_builder(&mut self, entity: Entity) -> EntityBuilder {
         EntityBuilder::builder(
             entity,
             self.components
@@ -102,11 +103,16 @@ impl WorldEntity {
     }
 
     pub fn remove_entity(&mut self, entity_id: i32) -> bool {
+        self.buff_manager.remove_entity_buffs(entity_id as i64);
         self.components.remove(&entity_id).is_some() && self.entity_manager.remove(entity_id)
     }
 
     pub fn active_entity_empty(&self) -> bool {
         self.entity_manager.active_entity_empty()
+    }
+
+    pub fn generate_role_permanent_buffs(&mut self, entity_id: i64) -> Vec<FightBuffInformation> {
+        self.buff_manager.create_permanent_buffs(entity_id)
     }
 }
 
@@ -115,6 +121,7 @@ impl Default for WorldEntity {
         Self {
             components: HashMap::new(),
             entity_manager: EntityManager::default(),
+            buff_manager: BufManager::default(),
         }
     }
 }

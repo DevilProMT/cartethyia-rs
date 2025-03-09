@@ -3,6 +3,9 @@ name = "wicked-waifus-gateway-server"
 edition = "2021"
 version.workspace = true
 
+[features]
+debug-msg = []
+
 [dependencies]
 # Framework
 tokio.workspace = true

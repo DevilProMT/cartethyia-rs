@@ -10,7 +10,7 @@ pub fn build_scene_add_on_init_data(player: &Player) -> PlayerSceneAoiData {
     let mut world_ref = player.world.borrow_mut();
     let world = world_ref.get_mut_world_entity();
 
-    let entities = query_hn_with!(world, PlayerEntityMarker)
+    let entities = query_hn_with!(world, PlayerOwnedEntityMarker)
         .into_iter()
         .map(|(entity_id, _)| {
             let res_map: (EEntityType, i32);
@@ -19,6 +19,9 @@ pub fn build_scene_add_on_init_data(player: &Player) -> PlayerSceneAoiData {
             ) {
                 Ok(EEntityType::Player) => {
                     res_map = (EEntityType::Player, entity_id);
+                }
+                Ok(EEntityType::Monster) => {
+                    res_map = (EEntityType::Monster, entity_id);
                 }
                 _ => {
                     res_map = (EEntityType::default(), -1);
@@ -46,10 +49,10 @@ pub fn build_scene_add_on_init_data(player: &Player) -> PlayerSceneAoiData {
                                 .get(&player.cur_formation_id)
                                 .unwrap()
                                 .cur_role;
-                            vis.0 = if config_id == cur_role_id {
-                                true
+                            (vis.is_visible, vis.is_actor_visible) = if config_id == cur_role_id {
+                                (true, true)
                             } else {
-                                false
+                                (false, true)
                             };
                         }
                     );
@@ -64,6 +67,28 @@ pub fn build_scene_add_on_init_data(player: &Player) -> PlayerSceneAoiData {
                             .into_iter()
                             .for_each(|comp| comp.set_pb_data(&mut pb));
 
+                        aoi_data.entities.push(pb);
+                    }
+                }
+                EEntityType::Monster => {
+                    let config_id = world.get_config_id(entity_id);
+                    modify_component!(
+                        world.get_entity_components(entity_id),
+                        Visibility,
+                        |vis: &mut Visibility| {
+                            vis.is_visible = false;
+                            vis.is_actor_visible = true;
+                        }
+                    );
+                    if world.get_entity(config_id).entity_type == EEntityType::Monster as i32 {
+                        let mut pb = EntityPb {
+                            id: entity_id as i64,
+                            ..Default::default()
+                        };
+                        world
+                            .get_entity_components(entity_id)
+                            .into_iter()
+                            .for_each(|comp| comp.set_pb_data(&mut pb));
                         aoi_data.entities.push(pb);
                     }
                 }

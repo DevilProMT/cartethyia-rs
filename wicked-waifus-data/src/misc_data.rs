@@ -1,6 +1,9 @@
 use serde::Deserialize;
 use serde_repr::Deserialize_repr;
 
+use crate::pb_components::action::Action;
+use crate::pb_components::condition::Condition;
+
 #[derive(Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct PropValueData {
@@ -53,7 +56,7 @@ impl RawVectorData {
 #[serde(rename_all = "PascalCase")]
 pub struct EntranceEntityData {
     pub dungeon_id: i32,
-    pub entrance_entity_id: i32,
+    pub entrance_entity_id: i64,
 }
 
 #[derive(Deserialize_repr, PartialEq, Debug, Copy, Clone)]
@@ -67,186 +70,423 @@ pub enum GachaViewTypeInfoId {
     BeginnersChoiceConvene = 6,
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "PascalCase")]
-pub struct Category {
-    pub main_type: Option<String>,
-    pub monster_match_type: Option<i32>,
+pub struct ConsumeItem {
+    pub item_id: i32,
+    pub count: i32,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct ScanFunction {
-    pub scan_id: Option<i32>,
-    pub is_concealed: Option<bool>,
+#[derive(Deserialize, PartialEq, Debug, Copy, Clone)]
+pub enum EntityType {
+    AdsorptionFoundation,
+    AdviseItem,
+    AiAlertNotifier,
+    AiGearController,
+    AiMovementGear,
+    AirPassage,
+    AiSceneItem,
+    Animal,
+    Animal2,
+    AnnunciatorCenter,
+    AnnunciatorWire,
+    AreaOccupation,
+    Audio,
+    AudioBox,
+    BatchBulletCaster,
+    BeamCastBullet,
+    BeamCaster,
+    BeamCrystal,
+    BeamDeliver,
+    BeamReceiver,
+    BondageTrap,
+    BuffConsumer,
+    BuffProducer,
+    BurstCrystalFoundation,
+    Chair,
+    Chair2,
+    ChallengeInteract,
+    Chessboard,
+    Chessman,
+    ClientTrigger,
+    Collect,
+    Collect2,
+    Collect3,
+    CollectAnimal,
+    CollectAnimalPart,
+    CombatAnimal,
+    CombatAnimal2,
+    CombinedVisibleGroup,
+    ControlConnector,
+    ConveyorBelt,
+    CookTool,
+    CustomAoiEditor,
+    Destructible,
+    DestructibleControl,
+    DestructibleExploreInteractor,
+    DestructibleSceneBullet,
+    DestructibleTrigger,
+    Disc,
+    Drop,
+    DungeonEntry,
+    DynamicPortalCreater,
+    EffectArea,
+    EnrichmentArea,
+    EntityBundle,
+    EntityList,
+    EntityPackage,
+    ExploreSkillInteractor,
+    FishingBoat,
+    FollowShooter,
+    FollowShooter2,
+    FollowTrack,
+    FollowTrackFoundation,
+    Gramophone,
+    GravityFlip,
+    GroupAi,
+    HackingTypeFollowShooter,
+    HookLockPoint,
+    HookSoundBox,
+    HookWithRange,
+    HorseBettingTuanzi,
+    InhaledItem,
+    InteractFoundation,
+    InteractFoundationWithSceneItemAttribute,
+    InteractGear,
+    InteractGearGroup,
+    InteractiveConditionListener,
+    Item,
+    ItemFoundation,
+    JigsawFoundation,
+    JigsawItem,
+    KiteHook,
+    LevelPlay,
+    LevelPlayReward,
+    LevelQteTrigger,
+    LevitateMagnet,
+    LifePointCenter,
+    Lift,
+    LightDeliver,
+    LocationSafety,
+    Monitor,
+    Monster,
+    MonsterGachaBase,
+    MonsterGachaItem,
+    MoveableTrigger,
+    NoRenderPortal,
+    Npc,
+    Npc2,
+    PasserbyNpc,
+    PhotoTarget,
+    PhysicsSwing,
+    Portal,
+    Position,
+    ProgressBarController,
+    ProgressBarControllerWithAttribute,
+    PullingObject,
+    Range,
+    RangeTriggerTargetGear,
+    ReboundPlateGear,
+    RefreshGroup,
+    RenderSpecifiedRange,
+    Resurrection,
+    RollingFireball,
+    Rotator,
+    SceneAura,
+    SceneBullet,
+    SceneBulletCanHit,
+    SceneBulletWithMovement,
+    SceneItemStateHint,
+    SimpleInteract,
+    SimpleNPc,
+    SkyboxTrigger,
+    SoundBox,
+    SpawnMonster,
+    SpawnPasserbyNpc,
+    Spline,
+    SummonGongduolaPoint,
+    StateSceneItem,
+    StateTrigger,
+    StatueFoundation,
+    SuiGuangHook,
+    TargetGear,
+    TargetGearGroup,
+    TargetGearGroup2,
+    TargetGearPro,
+    TargetGearWithLevelPrefabPerform,
+    TeleControl,
+    TeleControl3,
+    TeleControlGroup,
+    Teleporter,
+    TemporaryTeleporter,
+    TimelineTrackController,
+    TimeStop,
+    Trample,
+    Trample2,
+    Trample3,
+    TreasureBox,
+    Trigger,
+    TriggerConditionListener,
+    TurntableController,
+    VacuumCleaner,
+    VarManager,
+    Vehicle,
+    Vehicle2,
+    VehicleNpc,
+    VehicleSceneItem,
+    VisibleTrigger,
+    Vision,
+    VisionItem,
+    VisionTreasureBox,
+    WalkingPatternController,
+    WaterCollection,
+    WaterSpout,
+    Weapon,
 }
 
-#[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "PascalCase")]
-pub struct WorldLevelBonusType {
-    pub r#type: Option<i32>,
-    pub world_level_bonus_id: Option<i32>,
+#[derive(Deserialize, PartialEq, Debug, Copy, Clone)]
+pub enum EntityLogic {
+    Item,
+    Animal,
+    Monster,
+    Vehicle,
+    Npc,
+    Vision,
+    ClientOnly,
+    ServerOnly,
+    Custom,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
-pub struct BaseInfoComponent {
-    pub tid_name: Option<String>,
-    pub category: Option<Category>,
-    pub camp: Option<i32>,
-    pub online_interact_type: Option<i32>,
-    pub scan_function: Option<ScanFunction>,
-    pub aoi_layer: Option<i32>,
-    pub entity_property_id: Option<i32>,
-    pub focus_priority: Option<i32>,
-    pub aoi_zradius: Option<i32>,
-    // TODO: Add more
+#[derive(Debug, Deserialize)]
+pub enum LevelPlayType {
+    Challenge,
+    SilentArea,
+    Dungeon,
+    MonsterTreasure,
+    Quest,
+    Riddle,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
-pub struct AiComponent {
-    pub disabled: Option<bool>,
-    pub ai_id: Option<i32>,
-    // TODO: Add more
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayOpenCondition {
+    pub conditions: Option<Vec<Condition>>,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
-pub struct AttributeComponent {
-    pub property_id: Option<i32>,
-    pub level: Option<i32>,
-    pub world_level_bonus_type: Option<WorldLevelBonusType>,
-    pub rage_mode_id: Option<i32>,
-    pub hardness_mode_id: Option<i32>,
-    pub monster_prop_extra_rate_id: Option<i32>,
-    pub world_level_bonus_id: Option<i32>,
-    pub fight_music: Option<String>,
-    // TODO: Add more
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayActive {
+    pub active_type: i32,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
-pub struct TeleportPosition {
-    pub x: Option<f32>,
-    pub y: Option<f32>,
-    pub z: Option<f32>,
-    pub a: Option<f32>,
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayRewardConfigResetTypeMidNight {
+    pub count: i32,
 }
 
-#[derive(Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
-pub struct TeleportComponent {
-    pub disabled: Option<bool>,
-    pub teleporter_id: Option<i32>,
-    #[serde(rename = "TeleportPos")]
-    pub teleport_position: Option<TeleportPosition>,
+#[derive(Debug, Deserialize)]
+#[serde(tag = "Type")]
+pub enum LevelPlayRewardConfigResetType {
+    MidNight(LevelPlayRewardConfigResetTypeMidNight),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayRewardConfigInteract {
+    pub reward_id: i32,
+    pub reward_entity_id: i64,
+    pub reward_complete_actions: Vec<Action>,
+    pub first_complete_actions: Option<Vec<Action>>,
+    pub reset: Option<LevelPlayRewardConfigResetType>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "Type")]
+pub enum LevelPlayRewardConfig {
+    None,
+    Interact(LevelPlayRewardConfigInteract),
+}
+
+#[derive(Debug, Deserialize)]
+pub enum FixedDateTime {
+    Daily,
+    Weekly
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayRefreshConfigFixedDateTime {
+    pub update_type: FixedDateTime,
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayRefreshConfigCompleted {
+    pub min_refresh_cd: i32,
+    pub max_refresh_cd: i32,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "Type")]
+pub enum LevelPlayRefreshConfig {
+    None,
+    FixedDateTime(LevelPlayRefreshConfigFixedDateTime),
+    Completed(LevelPlayRefreshConfigCompleted),
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayTrack {
+    pub track_radius: i32,
+    pub track_priority: i32,
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayMark {
+    pub mark_id: i32,
+    pub map_bg_path: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum OnlineType {
+    Multiplayer,
+    Local,
+    Hang,
+}
+
+#[derive(Debug, Deserialize)]
+pub enum ObjType {
+    LevelPlay,
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct LevelPlayDataDetail { // Json file contains Data in name, so it has to be DataData
+    pub id: i32,
+    pub key: String,
+    #[cfg(feature = "strict_json_fields")]
+    pub internal_dest: String,
+    pub level_id: i32,
+    #[cfg(feature = "strict_json_fields")]
+    pub tid_name: String,
+    pub r#type: LevelPlayType,
+    pub instance_id: i32,
+    pub level_play_entity_id: i64,
+    pub level_additive_id: i32,
+    pub enter_radius: i32,
+    pub leave_radius: i32,
+    pub delay_refresh: bool,
+    pub delay_destroy: bool,
+    pub level_play_open_condition: LevelPlayOpenCondition,
+    pub level_play_active: LevelPlayActive,
+    pub level_play_reward_config: LevelPlayRewardConfig,
+    pub level_play_refresh_config: LevelPlayRefreshConfig,
+    pub level_play_track: LevelPlayTrack,
+    pub level_play_mark: Option<LevelPlayMark>,
+    pub enter_in_range_actions: Option<Vec<Action>>,
+    pub pack_id: i32,
+    pub online_type: OnlineType,
+    pub obj_type: ObjType,
+    #[cfg(feature = "strict_json_fields")]
+    pub children: Option<Vec<String>>,
+    #[cfg(feature = "strict_json_fields")]
+    pub reference: Vec<String>,
+    #[cfg(feature = "strict_json_fields")]
+    pub weak_reference: Option<Vec<String>>,
+    pub exploratory_degree: Option<i32>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase")]
-pub struct ComponentsData {
-    pub base_info_component: Option<BaseInfoComponent>,
-    pub ai_component: Option<AiComponent>,
-    pub attribute_component: Option<AttributeComponent>,
-    pub teleport_component: Option<TeleportComponent>,
-    // TODO: Implement this ones
-    // pub scene_actor_ref_component: Option<serde_json::Value>,
-    // pub effect_area_component: Option<serde_json::Value>,
-    // pub entity_state_component: Option<serde_json::Value>,
-    // pub condition_listener_component: Option<serde_json::Value>,
-    // pub interact_component: Option<serde_json::Value>,
-    // pub npc_perform_component: Option<serde_json::Value>,
-    // pub var_component: Option<serde_json::Value>,
-    // pub entity_visible_component: Option<serde_json::Value>,
-    // pub level_ai_component: Option<serde_json::Value>,
-    // pub trigger_component: Option<serde_json::Value>,
-    // pub range_component: Option<serde_json::Value>,
-    // pub spline_component: Option<serde_json::Value>,
-    // pub bubble_component: Option<serde_json::Value>,
-    // pub reward_component: Option<serde_json::Value>,
-    // pub refresh_component: Option<serde_json::Value>,
-    // pub passerby_npc_spawn_component: Option<serde_json::Value>,
-    // pub vision_capture_component: Option<serde_json::Value>,
-    // pub refresh_group_component: Option<serde_json::Value>,
-    // pub collect_component: Option<serde_json::Value>,
-    // pub target_gear_component: Option<serde_json::Value>,
-    // pub fight_interact_component: Option<serde_json::Value>,
-    // pub guide_line_creator_component: Option<serde_json::Value>,
-    // pub photo_target_component: Option<serde_json::Value>,
-    // pub model_component: Option<serde_json::Value>,
-    // pub entity_group_component: Option<serde_json::Value>,
-    // pub scene_item_life_cycle_component: Option<serde_json::Value>,
-    // pub entity_state_audio_component: Option<serde_json::Value>,
-    // pub animal_component: Option<serde_json::Value>,
-    // pub monster_component: Option<serde_json::Value>,
-    // pub nearby_tracking_component: Option<serde_json::Value>,
-    // pub follow_track_component: Option<serde_json::Value>,
-    // pub jigsaw_foundation: Option<serde_json::Value>,
-    // pub treasure_box_component: Option<serde_json::Value>,
-    // pub hook_lock_point: Option<serde_json::Value>,
-    // pub explore_skill_interact_component: Option<serde_json::Value>,
-    // pub attach_target_component: Option<serde_json::Value>,
-    // pub target_gear_group_component: Option<serde_json::Value>,
-    // pub spawn_monster_component: Option<serde_json::Value>,
-    // pub skybox_component: Option<serde_json::Value>,
-    // pub destructible_item: Option<serde_json::Value>,
-    // pub fan_component: Option<serde_json::Value>,
-    // pub state_hint_component: Option<serde_json::Value>,
-    // pub buff_consumer_component: Option<serde_json::Value>,
-    // pub reset_entities_pos_component: Option<serde_json::Value>,
-    // pub group_ai_component: Option<serde_json::Value>,
-    // pub pulling_object_foundation: Option<serde_json::Value>,
-    // pub lift_component: Option<serde_json::Value>,
-    // pub scene_item_movement_component: Option<serde_json::Value>,
-    // pub reset_self_pos_component: Option<serde_json::Value>,
-    // pub jigsaw_item: Option<serde_json::Value>,
-    // pub level_play_component: Option<serde_json::Value>,
-    // pub interact_gear_component: Option<serde_json::Value>,
-    // pub ai_gear_strategy_component: Option<serde_json::Value>,
-    // pub pick_interact_component: Option<serde_json::Value>,
-    // pub level_sequence_frame_event_component: Option<serde_json::Value>,
-    // pub air_wall_spawner_component: Option<serde_json::Value>,
-    // pub progress_bar_control_component: Option<serde_json::Value>,
-    // pub batch_bullet_caster_component: Option<serde_json::Value>,
-    // pub client_trigger_component: Option<serde_json::Value>,
-    // pub enrichment_area_component: Option<serde_json::Value>,
-    // pub vehicle_component: Option<serde_json::Value>,
-    // pub item_foundation2: Option<serde_json::Value>,
-    // pub tele_control2: Option<serde_json::Value>,
-    // pub interact_audio_component: Option<serde_json::Value>,
-    // pub level_qte_component: Option<serde_json::Value>,
-    // pub resurrection_component: Option<serde_json::Value>,
-    // pub ai_alert_notify_component: Option<serde_json::Value>,
-    // pub trample_component: Option<serde_json::Value>,
-    // pub dungeon_entry_component: Option<serde_json::Value>,
-    // pub level_prefab_perform_component: Option<serde_json::Value>,
-    // pub render_specified_range_component: Option<serde_json::Value>,
-    // pub walking_pattern_component: Option<serde_json::Value>,
-    // pub no_render_portal_component: Option<serde_json::Value>,
-    // pub adsorb_component: Option<serde_json::Value>,
-    // pub beam_cast_component: Option<serde_json::Value>,
-    // pub beam_receive_component: Option<serde_json::Value>,
-    // pub timeline_track_control_component: Option<serde_json::Value>,
-    // pub scene_bullet_component: Option<serde_json::Value>,
-    // pub edit_custom_aoi_component: Option<serde_json::Value>,
-    // pub combat_component: Option<serde_json::Value>,
-    // pub location_safety_component: Option<serde_json::Value>,
-    // pub turntable_control_component: Option<serde_json::Value>,
-    // pub scene_item_ai_component: Option<serde_json::Value>,
-    // pub buff_producer_component: Option<serde_json::Value>,
-    // pub portal_component: Option<serde_json::Value>,
-    // pub inhalation_ability_component: Option<serde_json::Value>,
-    // pub inhaled_item_component: Option<serde_json::Value>,
-    // pub monster_gacha_base_component: Option<serde_json::Value>,
-    // pub monster_gacha_item_component: Option<serde_json::Value>,
-    // pub time_stop_component: Option<serde_json::Value>,
-    // pub hit_component: Option<serde_json::Value>,
-    // pub levitate_magnet_component: Option<serde_json::Value>,
-    // pub rebound_component: Option<serde_json::Value>,
-    // pub rotator_component2: Option<serde_json::Value>,
-    // pub conveyor_belt_component: Option<serde_json::Value>,
-    // pub dynamic_portal_creator_component: Option<serde_json::Value>,
-    // pub connector_component: Option<serde_json::Value>,
-    // pub monitor_component: Option<serde_json::Value>,
+pub struct StateMachineTransition {
+    pub from: i32,
+    pub to: i32,
+    pub transition_prediction_type: i32,
+    pub weight: i32,
+    #[cfg(feature = "strict_json_fields")]
+    pub conditions: Vec<serde_json::Value>, // TODO: Implement conditions
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StateMachineNodeCommon {
+    pub uuid: i32,
+    #[cfg(feature = "strict_json_fields")]
+    pub is_anim_state_machine: Option<bool>,
+    #[cfg(feature = "strict_json_fields")]
+    pub is_conduit_node: Option<bool>,
+    #[cfg(feature = "strict_json_fields")]
+    pub is_any_state: Option<bool>,
+    #[cfg(feature = "strict_json_fields")]
+    pub name: String,
+    #[cfg(feature = "strict_json_fields")]
+    pub take_control_type: i32,
+    #[cfg(feature = "strict_json_fields")]
+    pub transition_rule: i32,
+    pub children: Option<Vec<i32>>,
+    pub transitions: Option<Vec<StateMachineTransition>>,
+    #[cfg(feature = "strict_json_fields")]
+    pub on_enter_actions: Option<Vec<serde_json::Value>>,  // TODO: Implement actions
+    #[cfg(feature = "strict_json_fields")]
+    pub on_exit_actions: Option<Vec<serde_json::Value>>,  // TODO: Implement actions
+    #[cfg(feature = "strict_json_fields")]
+    pub bind_states: Option<Vec<serde_json::Value>>,  // TODO: Implement bindStates
+    #[cfg(feature = "strict_json_fields")]
+    pub task: Option<serde_json::Value>,  // TODO: Implement bindStates
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StateMachineNodeReferenced {
+    pub reference_uuid: i32,
+    #[serde(flatten)]
+    pub common: StateMachineNodeCommon,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StateMachineNodeOverrideCommon {
+    pub override_common_uuid: i32,
+    #[serde(flatten)]
+    pub common: StateMachineNodeCommon,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StateMachineNodeCustom {
+    #[serde(flatten)]
+    pub common: StateMachineNodeCommon,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub enum StateMachineNode {
+    Reference(StateMachineNodeReferenced),
+    Override(StateMachineNodeOverrideCommon),
+    Custom(StateMachineNodeCustom),
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StateMachineJson {
+    pub version: u32,
+    pub state_machines: Vec<i32>,
+    pub nodes: Vec<StateMachineNode>,
 }

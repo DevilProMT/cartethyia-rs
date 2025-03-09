@@ -1,5 +1,5 @@
 [workspace]
-members = ["wicked-waifus-commons", "wicked-waifus-config-server", "wicked-waifus-hotpatch-server", "wicked-waifus-login-server", "wicked-waifus-gateway-server", "wicked-waifus-gateway-server/kcp", "wicked-waifus-database", "wicked-waifus-http", "wicked-waifus-protokey", "wicked-waifus-protocol-internal", "wicked-waifus-game-server", "wicked-waifus-network", "wicked-waifus-data"]
+members = ["wicked-waifus-asset-updater", "wicked-waifus-commons", "wicked-waifus-config-server", "wicked-waifus-hotpatch-server", "wicked-waifus-login-server", "wicked-waifus-gateway-server", "wicked-waifus-gateway-server/kcp", "wicked-waifus-database", "wicked-waifus-http", "wicked-waifus-protokey", "wicked-waifus-protocol-internal", "wicked-waifus-game-server", "wicked-waifus-network", "wicked-waifus-data"]
 resolver = "2"
 
 [workspace.package]
@@ -47,6 +47,7 @@ tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 # Internal
 kcp = { path = "wicked-waifus-gateway-server/kcp" }
+wicked-waifus-asset-updater = { path = "wicked-waifus-asset-updater" }
 wicked-waifus-commons = { path = "wicked-waifus-commons" }
 wicked-waifus-http = { path = "wicked-waifus-http" }
 wicked-waifus-data = { path = "wicked-waifus-data" }

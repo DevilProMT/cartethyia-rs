@@ -1,10 +1,25 @@
-use wicked_waifus_protocol::{
-    ErrorCode, Zih, InputSettingRequest, InputSettingResponse, InputSettingUpdateRequest,
-    InputSettingUpdateResponse, LanguageSettingUpdateRequest, LanguageSettingUpdateResponse,
-    ServerPlayStationPlayOnlyStateRequest, ServerPlayStationPlayOnlyStateResponse, VersionInfoPush,
-};
+use wicked_waifus_protocol::{ErrorCode, InputSettingRequest, InputSettingResponse, InputSettingUpdateRequest, InputSettingUpdateResponse, LanguageSettingUpdateRequest, LanguageSettingUpdateResponse, MonthCardRequest, MonthCardResponse, ServerPlayStationPlayOnlyStateRequest, ServerPlayStationPlayOnlyStateResponse, UpdateVoxelEnvRequest, UpdateVoxelEnvResponse, VersionInfoPush, WebSignRequest, WebSignResponse, Zih};
 
 use crate::logic::player::Player;
+
+pub fn on_month_card_request(
+    player: &mut Player,
+    _: MonthCardRequest,
+    response: &mut MonthCardResponse,
+) {
+    // TODO: Check if we should send MonthCardUseNotify
+    response.days = player.month_card.days;
+    response.is_daily_got = wicked_waifus_commons::time_util::unix_days() == player.month_card.last_received_day;
+    response.error_code = ErrorCode::Success.into();
+}
+
+pub fn on_web_sign_request(
+    _: &mut Player,
+    _: WebSignRequest,
+    response: &mut WebSignResponse,
+) {
+    response.notice_sign = "Welcome to Wicked Waifus PS provided by Reversed Rooms Dev Team".to_string();
+}
 
 pub fn on_input_setting_request(
     _: &Player,
@@ -46,4 +61,13 @@ pub fn on_version_info_push(_player: &Player, push: VersionInfoPush) {
         push.app_version,
         push.resource_version
     );
+}
+
+pub fn on_update_voxel_env_request(
+    _: &Player,
+    request: UpdateVoxelEnvRequest,
+    response: &mut UpdateVoxelEnvResponse,
+) {
+    response.server_cave_mode = request.server_cave_mode;
+    response.error_code = ErrorCode::Success.into();
 }

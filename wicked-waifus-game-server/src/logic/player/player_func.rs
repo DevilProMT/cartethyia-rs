@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use wicked_waifus_data::function_condition_data;
 use wicked_waifus_protocol::{FuncOpenNotify, Function};
 use wicked_waifus_protocol_internal::PlayerFuncData;
+use crate::config;
 
 pub struct PlayerFunc {
     pub func_map: HashMap<i32, i32>,
@@ -41,11 +42,19 @@ impl PlayerFunc {
 
 impl Default for PlayerFunc {
     fn default() -> Self {
-        Self {
-            func_map: function_condition_data::iter()
-                .filter(|fc| (fc.open_condition_id == 0 && fc.is_on) || (fc.function_id == 10009)) // TODO: remove this when required functions are implemented
-                .map(|fc| (fc.function_id, 2))
-                .collect(),
+        if config::get_config().default_unlocks.unlock_all_functions {
+            Self {
+                func_map: function_condition_data::iter()
+                    .map(|fc| (fc.function_id, 2))
+                    .collect(),
+            }
+        } else {
+            Self {
+                func_map: function_condition_data::iter()
+                    .filter(|fc| fc.open_condition_id == 0)
+                    .map(|fc| (fc.function_id, 2))
+                    .collect(),
+            }
         }
     }
 }

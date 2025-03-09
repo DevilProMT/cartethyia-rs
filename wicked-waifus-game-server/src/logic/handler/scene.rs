@@ -1,10 +1,9 @@
-use wicked_waifus_protocol::{
-    ErrorCode, SceneLoadingFinishRequest, SceneLoadingFinishResponse, SceneTraceRequest,
-    SceneTraceResponse, UpdateSceneDateRequest, UpdateSceneDateResponse,
-    AccessPathTimeServerConfigRequest, AccessPathTimeServerConfigResponse,
-    PlayerHeadDataRequest, PlayerHeadDataResponse, UnlockRoleSkinListRequest,
-    UnlockRoleSkinListResponse
-};
+use wicked_waifus_protocol::{ErrorCode, SceneLoadingFinishRequest, SceneLoadingFinishResponse, SceneTraceRequest, SceneTraceResponse, UpdateSceneDateRequest, UpdateSceneDateResponse, AccessPathTimeServerConfigRequest, AccessPathTimeServerConfigResponse, PlayerHeadDataRequest, PlayerHeadDataResponse, UnlockRoleSkinListRequest, UnlockRoleSkinListResponse, JsPatchNotify};
+
+const WATER_MASK: &str = include_str!("../../../scripts/watermask-disable.js");
+const UID_FIX: &str = include_str!("../../../scripts/uidfix.js");
+const CENSORSHIP_FIX: &str = include_str!("../../../scripts/censorshipfix.js");
+const DEBUG_DISABLE: &str = include_str!("../../../scripts/debug_disable.js");
 
 use crate::logic::player::Player;
 
@@ -17,10 +16,25 @@ pub fn on_scene_trace_request(
 }
 
 pub fn on_scene_loading_finish_request(
-    _player: &Player,
+    player: &Player,
     _request: SceneLoadingFinishRequest,
     response: &mut SceneLoadingFinishResponse,
 ) {
+    player.notify(JsPatchNotify {
+        content: WATER_MASK.to_string(),
+    });
+    player.notify(JsPatchNotify {
+        content: UID_FIX
+            .replace("{PLAYER_USERNAME}", &player.basic_info.name)
+            .replace("{SELECTED_COLOR}", "50FC71"),
+    });
+    player.notify(JsPatchNotify {
+        content: CENSORSHIP_FIX.to_string(),
+    });
+    player.notify(JsPatchNotify {
+        content: DEBUG_DISABLE.to_string(),
+    });
+
     // TODO: Implement this if needed
     response.error_code = ErrorCode::Success.into();
 }

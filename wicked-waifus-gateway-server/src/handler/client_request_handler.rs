@@ -1,10 +1,7 @@
 use wicked_waifus_commons::time_util;
 use wicked_waifus_database::{models, query_as};
 use wicked_waifus_network::ServiceMessage;
-use wicked_waifus_protocol::{
-    message::Message, CreateCharacterRequest, EnterGameRequest, ErrorCode, HeartbeatRequest,
-    HeartbeatResponse, LoginRequest, LoginResponse, ProtoKeyRequest, ProtoKeyResponse, Protobuf,
-};
+use wicked_waifus_protocol::{message::Message, CreateCharacterRequest, EnterGameRequest, ErrorCode, HeartbeatRequest, HeartbeatResponse, LoginRequest, LoginResponse, ProtoKeyRequest, ProtoKeyResponse, Protobuf, ReconnectRequest, ReconnectResponse};
 use wicked_waifus_protocol_internal::{CreatePlayerDataRequest, StartPlayerSessionRequest, MessageID};
 
 use crate::session::Session;
@@ -39,6 +36,7 @@ macro_rules! requests {
 requests! {
     ProtoKey;
     Login;
+    Reconnect;
     Heartbeat;
 }
 
@@ -138,6 +136,7 @@ async fn on_login_request(
         return;
     };
 
+    // TODO: Add reconnect token
     session.player_id = Some(player_id);
     response.error_code = ErrorCode::Success.into();
     response.timestamp = time_util::unix_timestamp_ms() as i64;
@@ -147,6 +146,25 @@ async fn on_login_request(
         &request.account,
         player_id
     );
+}
+
+async fn on_reconnect_request(
+    session: &mut Session,
+    request: ReconnectRequest,
+    response: &mut ReconnectResponse,
+) {
+    match session.player_id {
+        None => response.error_code = ErrorCode::ErrReconnectGwGetGatePlayerFailed.into(),
+        Some(player_id) => {
+            // TODO: check reconnect token / trace id and last seqno and verify it
+            if player_id == request.player_id {
+                response.error_code = ErrorCode::Success.into();
+                response.timestamp = time_util::unix_timestamp_ms() as i64;
+                response.is_permitted_silent_login = false;
+                response.last_recv_seq_no = request.last_svr_seq_no;
+            }
+        }
+    }
 }
 
 async fn on_heartbeat_request(

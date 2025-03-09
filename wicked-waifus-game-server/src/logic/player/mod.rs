@@ -1,46 +1,77 @@
+pub use in_world_player::InWorldPlayer;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
-
-pub use in_world_player::InWorldPlayer;
-use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
-use wicked_waifus_protocol::{AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, ControlInfoNotify, EEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState, ERemoveEntityType, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FormationRoleInfo, GroupFormation, InstDataNotify, ItemPkgOpenNotify, LivingStatus, MapUnlockFieldNotify, PbGetRoleListNotify, PlayerFightFormations, ProtocolUnit, RoleChangeUnlockNotify, UpdateFormationNotify, UpdateGroupFormationNotify};
-use wicked_waifus_protocol::message::Message;
 use wicked_waifus_commons::time_util;
-use wicked_waifus_data::base_property_data;
-use wicked_waifus_data::role_info_data;
+use wicked_waifus_data::motion_data;
+use wicked_waifus_protocol::message::Message;
+use wicked_waifus_protocol::player_attr::Value;
+use wicked_waifus_protocol::{
+    AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify,
+    ControlInfoNotify, EEntityType, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify,
+    EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState,
+    FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FormationRoleInfo,
+    GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify,
+    LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MapUnlockFieldNotify,
+    MonthCardDailyRewardNotify, MoonChasingTargetGetCountNotify,
+    MoonChasingTrackMoonHandbookRewardNotify, NormalItemUpdateNotify, PassiveSkillNotify,
+    PbGetRoleListNotify, PlayerAttr, PlayerAttrKey, PlayerAttrNotify, PlayerAttrType,
+    PlayerFightFormations, PlayerVarNotify, ProtocolUnit, PushContextIdNotify,
+    PushDataCompleteNotify, RoguelikeCurrencyNotify, RoleChangeUnlockNotify, RoleFavor,
+    RoleFavorListNotify, RoleMotion, RoleMotionListNotify, SettingNotify, TeleportUpdateNotify,
+    UpdateFormationNotify, UpdateGroupFormationNotify,
+};
+use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
 
-use crate::{create_player_entity_pb, query_components};
-use crate::logic::{
-    components::{
-        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerEntityMarker,
-        Position, Visibility, VisionSkill,
-    },
-    ecs::component::ComponentContainer,
+use super::{
+    ecs::world::World,
+    role::{Role, RoleFormation},
 };
 use crate::logic::components::RoleSkin;
 use crate::logic::ecs::world::WorldEntity;
 use crate::logic::player::basic_info::PlayerBasicInfo;
 use crate::logic::player::explore_tools::ExploreTools;
 use crate::logic::player::location::PlayerLocation;
+use crate::logic::player::player_adventure::PlayerAdventureStatus;
+use crate::logic::player::player_advice::PlayerAdviceConfig;
 use crate::logic::player::player_chat::PlayerChat;
 use crate::logic::player::player_func::PlayerFunc;
-use crate::logic::player::guides::Guides;
-use crate::session::Session;
-
-use super::{
-    ecs::world::World,
-    role::{Role, RoleFormation},
+use crate::logic::player::player_guides::PlayerGuides;
+pub use crate::logic::player::player_inventory::ItemUsage;
+use crate::logic::player::player_inventory::PlayerInventory;
+use crate::logic::player::player_map_trace::PlayerMapTrace;
+pub use crate::logic::player::player_mc_element::Element;
+use crate::logic::player::player_mc_element::PlayerMcElement;
+use crate::logic::player::player_month_card::PlayerMonthCard;
+use crate::logic::player::player_teleports::{PlayerTeleport, PlayerTeleports};
+use crate::logic::player::player_tutorials::{PlayerTutorial, PlayerTutorials};
+use crate::logic::{
+    components::{
+        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
+        Position, Visibility, VisionSkill,
+    },
+    ecs::component::ComponentContainer,
 };
+use crate::session::Session;
+use crate::{config, create_player_entity_pb, query_components};
+use crate::logic::player::Element::Spectro;
 
 mod basic_info;
 mod explore_tools;
 mod in_world_player;
 mod location;
-mod player_func;
+mod player_adventure;
+mod player_advice;
 mod player_chat;
-mod guides;
+mod player_func;
+mod player_guides;
+mod player_inventory;
+mod player_map_trace;
+mod player_mc_element;
+mod player_month_card;
+mod player_teleports;
+mod player_tutorials;
 
 pub struct Player {
     session: Option<Arc<Session>>,
@@ -53,7 +84,15 @@ pub struct Player {
     pub func: PlayerFunc,
     pub explore_tools: ExploreTools,
     pub player_chat: PlayerChat,
-    pub guides: Guides,
+    pub guides: PlayerGuides,
+    pub advise: PlayerAdviceConfig,
+    pub adventure_status: PlayerAdventureStatus,
+    pub inventory: PlayerInventory,
+    pub teleports: PlayerTeleports,
+    pub tutorials: PlayerTutorials,
+    pub map_trace: PlayerMapTrace,
+    pub month_card: PlayerMonthCard,
+    pub mc_element: PlayerMcElement,
     // Runtime
     pub world: Rc<RefCell<World>>,
     pub last_save_time: u64,
@@ -72,83 +111,108 @@ impl Player {
     pub fn notify_general_data(&self) {
         self.notify(self.build_adventure_task_notify());
         self.notify(AdviceSettingNotify {
-            is_show: true,
+            is_show: self.advise.is_show,
         });
-        self.notify(self.basic_info.build_notify());
+        self.notify(self.basic_info.build_notify(&self.inventory));
+        // CalabashMsgNotify + CalabashLevelRewardsNotify
         self.notify(ControlInfoNotify {
             forbid_list: vec![], // Disable function prohibition
         });
-        // CalabashMsgNotify + CalabashLevelRewardsNotify
+        self.notify(self.explore_tools.build_explore_tool_all_notify());
+        self.notify(self.explore_tools.build_vision_explore_skill_notify());
+        self.notify(self.explore_tools.build_roulette_update_notify());
+        self.notify(self.build_role_favor_list_notify());
         self.notify(self.func.build_func_open_notify());
-        // RoleFavorListNotify
         self.notify(InstDataNotify {
             enter_infos: vec![], // TODO: No effect in normal world, to implement for dungeon::logic()
         });
         self.notify(ItemPkgOpenNotify {
             open_pkg: (0..8).collect(),
         });
-        // TODO: [WWPS-1] Real implementation should fetch completed / uncompleted from db, lets return completed
-        for i in 0..40 {
-            self.notify(MapUnlockFieldNotify {
-                field_id: i,
-            });
-        }
-        self.notify(self.build_role_list_notify());
-        self.notify(self.explore_tools.build_explore_tool_all_notify());
-        self.notify(self.explore_tools.build_roulette_update_notify());
-        // VisionExploreSkillNotify
         self.notify(RoleChangeUnlockNotify {
-            unlock_role_ids: vec![
-                Role::MAIN_CHARACTER_FEMALE_SPECTRO_ID,
-                Role::MAIN_CHARACTER_MALE_SPECTRO_ID,
-                Role::MAIN_CHARACTER_MALE_HAVOC_ID,
-                Role::MAIN_CHARACTER_FEMALE_HAVOC_ID,
-            ],
+            // TODO: element persistance
+            unlock_role_ids: Role::get_mc_unlock_variations(vec![
+                Element::Spectro,
+                Element::Havoc,
+                Element::Aero,
+            ]),
             next_allow_change_time: 0,
         });
-        // EnergyUpdateNotify
-        // LevelPlayInfoNotify
-        // MailInfoNotify
+        self.notify(self.build_role_list_notify());
+        // TODO
+        self.notify(BuffItemNotify {
+            item_buff_list: vec![],
+            cr_1: vec![],
+        });
+        // TODO:
+        self.notify(EnergyUpdateNotify {
+            update_info: vec![
+                EnergyInfo {
+                    energy_count: 240,
+                    last_renew_energy_time: 0,
+                    energy_type: 5,
+                },
+                EnergyInfo {
+                    energy_count: 480,
+                    last_renew_energy_time: 0,
+                    energy_type: 6,
+                },
+            ],
+        });
+        // TODO:
+        self.notify(LevelPlayInfoNotify {
+            level_play_info: vec![],
+        });
         // PayShopInfoNotify
-        // PlayerVarNotify
-        // RoguelikeCurrencyNotify
-        // RoleMotionListNotify
-        // SettingNotify
+        // TODO:
+        self.notify(PlayerVarNotify {
+            var_infos: Default::default(),
+        });
+        self.notify(RoguelikeCurrencyNotify {});
+        self.notify(self.build_motion_list_notify());
+        self.notify(PassiveSkillNotify {
+            role_passive_skill_info_list: vec![], // TODO:
+        });
+
+        // TODO:
+        self.notify(MailInfosNotify { mail_infos: vec![] });
+        // TODO:
+        self.notify(SettingNotify {
+            mobile_button_settings: vec![],
+        });
+        // TODO:
+        self.notify(MoonChasingTrackMoonHandbookRewardNotify { ids: vec![] });
+        // TODO:
+        self.notify(MoonChasingTargetGetCountNotify {
+            target_get_count: 0,
+        });
+        // TODO: [WWPS-1] Real implementation should fetch completed / uncompleted from db, lets return completed
+        // for i in 0..80 {
+        //     self.notify(MapUnlockFieldNotify { field_id: i });
+        // }
+        self.notify(PushContextIdNotify { id: 0 });
+        self.notify(PushDataCompleteNotify {});
     }
 
     fn init_role_and_formation(&mut self) {
         self.role_list.clear();
-        let mut role = match self.basic_info.sex {
-            0 => Role::new(Role::MAIN_CHARACTER_FEMALE_SPECTRO_ID),
-            1 => Role::new(Role::MAIN_CHARACTER_MALE_SPECTRO_ID),
-            _ => unreachable!(),
-        };
-
+        let mut role = Role::get_mc_based_on_sex(self.basic_info.sex, Spectro);
         role.name = self.basic_info.name.clone();
-
         self.role_list.insert(role.role_id, role);
 
-        let required_role_ids: Vec<i32> = role_info_data::iter()
-            .filter(|role_info| role_info.role_type == 1)
-            .map(|role_info| role_info.id)
-            .collect();
-        let formation = vec![1506, 1206, 1505];
-
-        required_role_ids.iter().for_each(|&role_id| {
-            if !self.role_list.keys().any(|&k| k == role_id) {
+        if config::get_config().default_unlocks.unlock_all_roles {
+            Role::get_all_roles_except_mc().iter().for_each(|&role_id| {
+                if !self.role_list.keys().any(|&k| k == role_id) {
+                    self.role_list.insert(role_id, Role::new(role_id));
+                }
+            });
+        } else {
+            RoleFormation::default_roles().iter().for_each(|&role_id| {
                 self.role_list.insert(role_id, Role::new(role_id));
-            }
-        });
+            });
+        }
 
-        self.formation_list.insert(
-            1,
-            RoleFormation {
-                id: 1,
-                cur_role: *formation.iter().next().unwrap(),
-                role_ids: formation,
-                is_current: true,
-            },
-        );
+        self.formation_list.insert(1, RoleFormation::default());
         self.cur_formation_id = 1;
 
         self.formation_list.values_mut().for_each(|formation| {
@@ -215,35 +279,94 @@ impl Player {
     }
 
     pub fn build_adventure_task_notify(&self) -> AdventureUpdateNotify {
-        // TODO: [WWPS-1] Real implementation should fetch completed / uncompleted from db, lets return completed
-        let adventure_task_data = wicked_waifus_data::adventure_task_data::iter();
-
         AdventureUpdateNotify {
-            adventure_manual_data: vec![
-                AdventureManualData {
-                    adventre_task: adventure_task_data
-                        .map(|task| AdventreTask {
-                            id:task.id,
-                            adventre_progress: 1,
-                            state:2,
+            adventure_manual_data: self
+                .adventure_status
+                .status
+                .iter()
+                .map(|global_status| AdventureManualData {
+                    adventre_task: global_status
+                        .adventure_task_status
+                        .iter()
+                        .map(|status| AdventreTask {
+                            id: status.id,
+                            state: status.state,
+                            adventre_progress: status.progress,
                         })
-                        .collect(),
-                    now_chapter:9,
-                    received_chapter:9,
-                }
-            ],
+                        .collect::<Vec<_>>(),
+                    now_chapter: global_status.now_chapter,
+                    received_chapter: global_status.received_chapter,
+                })
+                .collect::<Vec<_>>(),
         }
     }
 
-    pub fn build_player_entity_add_notify(
-        &self,
-        role_list: Vec<Role>,
-        world: &mut WorldEntity,
-    ) -> EntityAddNotify {
+    pub fn build_role_favor_list_notify(&self) -> RoleFavorListNotify {
+        RoleFavorListNotify {
+            favor_list: self
+                .role_list
+                .iter()
+                .map(|(_, role)| RoleFavor {
+                    role_id: role.role_id,
+                    level: role.favor_level,
+                    exp: role.favor_exp,
+                    word_ids: wicked_waifus_data::favor_word_data::iter()
+                        .filter(|&word| word.role_id == role.role_id && word.cond_group_id == 0) // TODO: handle conditions
+                        .map(|word| FavorItem {
+                            id: word.id,
+                            status: 2,
+                        })
+                        .collect(),
+                    story_ids: wicked_waifus_data::favor_story_data::iter()
+                        .filter(|&story| story.role_id == role.role_id && story.cond_group_id == 0) // TODO: handle conditions
+                        .map(|story| FavorItem {
+                            id: story.id,
+                            status: 2,
+                        })
+                        .collect(),
+                    goods_ids: wicked_waifus_data::favor_goods_data::iter()
+                        .filter(|&goods| goods.role_id == role.role_id && goods.cond_group_id == 0) // TODO: handle conditions
+                        .map(|goods| FavorItem {
+                            id: goods.id,
+                            status: 2,
+                        })
+                        .collect(),
+                    favor_quest: None, // TODO:
+                })
+                .collect(),
+            role_condition_info_map: Default::default(),
+        }
+    }
+
+    pub fn build_motion_list_notify(&self) -> RoleMotionListNotify {
+        RoleMotionListNotify {
+            motion_list: self
+                .role_list
+                .iter()
+                .map(|(_, role)| {
+                    RoleMotion {
+                        role_id: role.role_id,
+                        motion_ids: motion_data::iter()
+                            .filter(|motion| {
+                                role.role_id == motion.role_id && motion.cond_group_id == 0
+                            }) // TODO: handle conditions
+                            .map(|motion| FavorItem {
+                                id: motion.id,
+                                status: 2,
+                            })
+                            .collect::<Vec<_>>(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+            role_condition_info_map: Default::default(),
+        }
+    }
+
+    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>) -> EntityAddNotify {
         create_player_entity_pb!(
             role_list,
             self.basic_info.cur_map_id,
-            world,
+            self,
             self.basic_info.id,
             self.location.position.clone(),
             self.explore_tools
@@ -283,12 +406,13 @@ impl Player {
                         .iter()
                         .map(|&role_id| {
                             let entity_id = world.get_entity_id(role_id);
-                            let role_skin = query_components!(world, entity_id, RoleSkin).0.unwrap();
+                            let role_skin =
+                                query_components!(world, entity_id, RoleSkin).0.unwrap();
                             FightRoleInfo {
                                 role_id,
                                 entity_id: world.get_entity_id(role_id),
                                 on_stage_without_control: false,
-                                role_skin_id: role_skin.skin_id,
+                                // role_skin_id: role_skin.skin_id,
                             }
                         })
                         .collect(),
@@ -343,6 +467,65 @@ impl Player {
         }
     }
 
+    pub fn unlock_teleport(&mut self, teleport_id: i32) {
+        let teleporter = wicked_waifus_data::teleporter_data::iter()
+            .find(|teleporter| teleporter.id == teleport_id)
+            .map(|teleporter| PlayerTeleport {
+                id: teleporter.id,
+                map_id: teleporter.map_id,
+                entity_config_id: teleporter.teleport_entity_config_id,
+            });
+
+        if let Some(teleporter) = teleporter {
+            self.teleports.teleports_data.push(teleporter);
+
+            self.notify(HostTeleportUnlockNotify {
+                host_player_id: self.basic_info.id,
+                host_teleport_id: teleport_id,
+            });
+
+            self.notify(TeleportUpdateNotify {
+                ids: vec![teleport_id],
+            });
+        }
+    }
+
+    pub fn unlock_tutorial(&mut self, tutorial_id: i32) -> PlayerTutorial {
+        let tutorial = PlayerTutorial {
+            id: tutorial_id,
+            create_time: time_util::unix_timestamp() as u32,
+            get_award: false,
+        };
+        self.tutorials.tutorials.push(tutorial.clone());
+        tutorial
+    }
+
+    pub fn notify_month_card(&mut self) {
+        if self.month_card.days > -1 && time_util::unix_days() != self.month_card.last_received_day
+        {
+            let astrites = self.inventory.add_astrite(90);
+            self.month_card.days -= 1;
+            self.month_card.last_received_day = time_util::unix_days();
+
+            self.notify(PlayerAttrNotify {
+                attributes: vec![PlayerAttr {
+                    key: PlayerAttrKey::RareCoin.into(),
+                    value_type: PlayerAttrType::Int32.into(),
+                    value: Some(Value::Int32Value(astrites)),
+                }],
+            });
+            self.notify(NormalItemUpdateNotify {
+                normal_item_list: self.inventory.to_normal_item_list_filtered(vec![3]),
+                no_tips: false,
+            });
+            self.notify(MonthCardDailyRewardNotify {
+                item_id: 3,
+                count: 90,
+                days: self.month_card.days,
+            });
+        }
+    }
+
     pub fn load_from_save(save_data: PlayerSaveData) -> Self {
         let role_data = save_data.role_data.unwrap_or_default();
 
@@ -380,7 +563,39 @@ impl Player {
                 .unwrap_or_default(),
             guides: save_data
                 .guides
-                .map(Guides::load_from_save)
+                .map(PlayerGuides::load_from_save)
+                .unwrap_or_default(),
+            advise: save_data
+                .advise
+                .map(PlayerAdviceConfig::load_from_save)
+                .unwrap_or_default(),
+            adventure_status: save_data
+                .adventure_status
+                .map(PlayerAdventureStatus::load_from_save)
+                .unwrap_or_default(),
+            inventory: save_data
+                .inventory
+                .map(PlayerInventory::load_from_save)
+                .unwrap_or_default(),
+            teleports: save_data
+                .teleports
+                .map(PlayerTeleports::load_from_save)
+                .unwrap_or_default(),
+            tutorials: save_data
+                .tutorials
+                .map(PlayerTutorials::load_from_save)
+                .unwrap_or_default(),
+            map_trace: save_data
+                .map_trace
+                .map(PlayerMapTrace::load_from_save)
+                .unwrap_or_default(),
+            month_card: save_data
+                .month_card
+                .map(PlayerMonthCard::load_from_save)
+                .unwrap_or_default(),
+            mc_element: save_data
+                .mc_element
+                .map(PlayerMcElement::load_from_save)
                 .unwrap_or_default(),
             world: Rc::new(RefCell::new(World::new())),
             last_save_time: time_util::unix_timestamp(),
@@ -409,6 +624,14 @@ impl Player {
             explore_tools_data: Some(self.explore_tools.build_save_data()),
             chat_data: Some(self.player_chat.build_save_data()),
             guides: Some(self.guides.build_save_data()),
+            advise: Some(self.advise.build_save_data()),
+            adventure_status: Some(self.adventure_status.build_save_data()),
+            inventory: Some(self.inventory.build_save_data()),
+            teleports: Some(self.teleports.build_save_data()),
+            tutorials: Some(self.tutorials.build_save_data()),
+            map_trace: Some(self.map_trace.build_save_data()),
+            month_card: Some(self.month_card.build_save_data()),
+            mc_element: Some(self.mc_element.build_save_data()),
         }
     }
 
@@ -417,12 +640,12 @@ impl Player {
     }
 
     pub fn build_role_list_notify(&self) -> PbGetRoleListNotify {
+        // TODO: There is a bug we are investigating with several resonators, this is a workaround
         PbGetRoleListNotify {
             role_list: self
                 .role_list
                 .iter()
                 .map(|(_, role)| role.to_protobuf())
-                .take(3) // TODO: There is a bug we are investigating with several resonators, this is a workaround
                 .collect(),
         }
     }
@@ -440,36 +663,27 @@ impl Player {
     pub fn respond(&self, content: impl ProtocolUnit, rpc_id: u16) {
         if let Some(session) = self.session.as_ref() {
             let data = content.encode_to_vec().into_boxed_slice();
-            tracing::debug!("Push to gateway MSG_ID: {}, LEN: {}, DATA: {}", content.get_message_id(), data.len(), hex::encode(&data));
             let response = Message::Response {
                 sequence_number: 0,
                 message_id: content.get_message_id(),
                 rpc_id,
                 payload: Some(data),
             };
-            // let (name, value) = ("PbGetRoleListNotify", serde_json::to_string_pretty(&list).unwrap());
-            // tracing::debug!("trying to log unhandled data for message {name} with:\n{value}");
             session.forward_to_gateway(response);
         }
     }
 
     pub fn create_default_save_data(id: i32, name: String, sex: i32) -> PlayerSaveData {
-        let role_id = match sex {
-            0 => Role::MAIN_CHARACTER_FEMALE_SPECTRO_ID, // 1502
-            1 => Role::MAIN_CHARACTER_MALE_SPECTRO_ID,   // 1501
-            _ => Role::MAIN_CHARACTER_MALE_SPECTRO_ID,   // Default to male
-        };
-
         PlayerSaveData {
             basic_data: Some(PlayerBasicData {
                 id,
                 name,
                 sex,
                 level: 1,
-                head_photo: 1603,
-                head_frame: 80060009,
+                head_photo: 82001603,
+                head_frame: 0,
                 cur_map_id: 8,
-                role_show_list: vec![role_id],
+                role_show_list: vec![Role::get_mc_id_based_on_sex(sex, Spectro)],
                 ..Default::default()
             }),
             ..Default::default()

@@ -28,7 +28,7 @@ impl_component_container! {
     OwnerPlayer;
     Visibility;
     Attribute;
-    PlayerEntityMarker;
+    PlayerOwnedEntityMarker;
     Movement;
     Equip;
     VisionSkill;
@@ -40,6 +40,8 @@ impl_component_container! {
     Tag;
     Autonomous;
     Interact;
+    Concomitant;
+    Summoner;
 }
 
 pub trait Component {

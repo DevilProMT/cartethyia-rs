@@ -1,16 +1,18 @@
 use rand::prelude::IndexedRandom;
 use rand::Rng;
-
-use wicked_waifus_data::GachaViewTypeInfoId::{BeginnersChoiceConvene,
-                                            FeaturedResonatorConvene,
-                                            FeaturedWeaponConvene,
-                                            NoviceConvene,
-                                            StandardResonatorConvene,
-                                            StandardWeaponConvene,
-};
 use wicked_waifus_protocol::{ErrorCode, GachaResult, GachaReward};
 
+use wicked_waifus_data::GachaViewTypeInfoId::{BeginnersChoiceConvene,
+                                              FeaturedResonatorConvene,
+                                              FeaturedWeaponConvene,
+                                              NoviceConvene,
+                                              StandardResonatorConvene,
+                                              StandardWeaponConvene,
+};
+
 use crate::logic::gacha::pool_info::PoolInfo;
+use crate::logic::player::Player;
+use crate::logic::role::Role;
 
 pub struct PoolRates {
     pub three_star: f32,
@@ -51,25 +53,26 @@ impl GachaPool {
         }
     }
 
-    pub fn pull<T: Rng>(&mut self, rng: &mut T) -> Result<GachaResult, ErrorCode> {
+    pub fn pull<T: Rng>(&mut self,
+                        rng: &mut T,
+                        player: &mut Player) -> Result<GachaResult, ErrorCode> {
         self.check_limits()?;
 
         let result = if (self.info.pool_type == BeginnersChoiceConvene)
             && (self.info.pool_id > 50) && (self.info.pool_id < 60) {
-
             let item_id = self.info.guaranteed_character_id.unwrap();
             GachaResult {
                 gacha_reward: Some(GachaReward { item_id, item_count: 1 }),
                 extra_rewards: self.calculate_extra_rewards(2),
-                transform_rewards: Vec::new(),
+                transform_rewards: Self::get_transform_rewards(player, item_id),
                 bottom: None,
             }
         } else {
             let rarity = self.determine_rarity(&self.calculate_probabilities(), rng);
-            let item_id= match self.info.pool_type {
+            let item_id = match self.info.pool_type {
                 FeaturedResonatorConvene => {
                     let item_id = if rarity == 2 {
-                        if self.rate_up || rng.gen_bool(0.5) {
+                        if self.rate_up || rng.random_bool(0.5) {
                             self.rate_up = false;
                             self.info.guaranteed_character_id.unwrap_or(0)
                         } else {
@@ -89,13 +92,33 @@ impl GachaPool {
             GachaResult {
                 gacha_reward: Some(GachaReward { item_id, item_count: 1 }),
                 extra_rewards: self.calculate_extra_rewards(rarity),
-                transform_rewards: Vec::new(),
+                transform_rewards: Self::get_transform_rewards(player, item_id),
                 bottom: None,
             }
         };
 
         self.update_limits();
         Ok(result)
+    }
+
+    fn get_transform_rewards(player: &mut Player, item_id: i32) -> Vec<GachaReward> {
+        let mut transform_rewards = Vec::new();
+        let required_role_ids: Vec<i32> = Role::get_all_roles_except_mc();
+        match player.role_list.get(&item_id) {
+            None => {
+                if required_role_ids.contains(&item_id) {
+                    player.role_list.insert(item_id, Role::new(item_id));
+                }
+            }
+            Some(role) => {
+                // TODO: Even if we have, we can't get more than six wavebands, make a check
+                transform_rewards.push(GachaReward {
+                    item_id: 10000000 + role.role_id,
+                    item_count: 1,
+                }) // TODO: get from role data
+            }
+        }
+        transform_rewards
     }
 
     fn get_random_item(&self, rarity: usize, rng: &mut impl Rng) -> i32 {
@@ -147,7 +170,7 @@ impl GachaPool {
     }
 
     fn determine_rarity(&self, prob: &[f32; 3], rng: &mut impl Rng) -> usize {
-        let roll: f32 = rng.gen_range(0.0..100.0);
+        let roll: f32 = rng.random_range(0.0..100.0);
         match (roll < prob[2], roll < prob[2] + prob[1]) {
             (true, _) => 2,  // 5-star
             (_, true) => 1,  // 4-star

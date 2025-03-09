@@ -87,6 +87,8 @@ impl Session {
                 )?);
             }
 
+            #[cfg(feature = "debug-msg")]
+            Self::debug_message(&message);
             client_message_handler::push_message(self.conv_id, message).await;
         }
 
@@ -110,6 +112,8 @@ impl Session {
     }
 
     pub async fn send_message(&mut self, mut message: Message) -> Result<(), SessionError> {
+        #[cfg(feature = "debug-msg")]
+        Self::debug_message(&message);
         if let Some(session_key) = self.session_key.as_ref() {
             let payload = message.remove_payload();
             message.set_payload(self.protokey_helper.encrypt(
@@ -164,6 +168,16 @@ impl Session {
                 })
                 .ok()
         })
+    }
+
+    #[cfg(feature = "debug-msg")]
+    fn debug_message(message: &Message) {
+        if let Some(data) = message.get_payload() {
+            let id = message.get_message_id();
+            let (name, value) = wicked_waifus_protocol::proto_dumper::get_debug_info(id, data)
+                .unwrap_or_else(|err| ("Error", err.to_string()));
+            tracing::warn!("DEBUG GATEWAY RX MESSAGE {name}({id}) with:\n{value}");
+        }
     }
 }
 

@@ -50,7 +50,7 @@ impl System for MovementSystem {
             if let (Some(_), Some(owner)) = query_components!(
                 world_entity,
                 i64::from(entity),
-                PlayerEntityMarker,
+                PlayerOwnedEntityMarker,
                 OwnerPlayer
             ) {
                 if let Some(player) = players.iter_mut().find(|pl| pl.basic_info.id == owner.0) {
