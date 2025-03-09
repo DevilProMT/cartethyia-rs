@@ -17,6 +17,7 @@ use wicked_waifus_protocol::{ErrorCode, GachaResult};
 use crate::logic::gacha::category::PoolCategory;
 use crate::logic::gacha::gacha_pool::GachaPool;
 use crate::logic::gacha::pool_info::PoolInfo;
+use crate::logic::player::Player;
 
 pub struct GachaService {
     pools: HashMap<i32, GachaPool>,
@@ -57,7 +58,10 @@ impl GachaService {
         pools
     }
 
-    pub fn pull(&mut self, pool_id: i32, times: i32) -> Result<Vec<GachaResult>, ErrorCode> {
+    pub fn pull(&mut self,
+                player: &mut Player,
+                pool_id: i32,
+                times: i32) -> Result<Vec<GachaResult>, ErrorCode> {
         let pool = self.pools.get_mut(&pool_id)
             .ok_or(ErrorCode::ErrGachaPoolConfigNotFound)?;
 
@@ -69,7 +73,7 @@ impl GachaService {
 
         let mut results = Vec::new();
         for _ in 0..times {
-            match pool.pull(&mut self.rng) {
+            match pool.pull(&mut self.rng, player) {
                 Ok(result) => results.push(result),
                 Err(error_code) => return Err(error_code),
             }
@@ -85,6 +89,7 @@ impl GachaService {
             .collect()
     }
 
+    #[allow(dead_code)]
     pub fn get_all_pools(&self) -> Vec<(i32, &PoolInfo)> {
         self.pools.iter()
             .map(|(id, pool)| (*id, &pool.info))

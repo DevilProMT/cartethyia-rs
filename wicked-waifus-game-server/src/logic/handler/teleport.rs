@@ -1,18 +1,20 @@
-use wicked_waifus_protocol::{ErrorCode, TeleportDataRequest, TeleportDataResponse, TeleportNotify, TeleportReason, TeleportTransferRequest, TeleportTransferResponse, TeleportFinishRequest, TeleportFinishResponse, TransitionOptionPb, TransitionType, LeaveSceneNotify, JoinSceneNotify};
-use wicked_waifus_data::{ComponentsData, level_entity_config_data, RawVectorData, TeleportComponent};
+use wicked_waifus_protocol::{ErrorCode, JoinSceneNotify, LeaveSceneNotify, TeleportDataRequest, TeleportDataResponse, TeleportFinishRequest, TeleportFinishResponse, TeleportNotify, TeleportReason, TeleportTransferRequest, TeleportTransferResponse, TransitionOptionPb};
 
+use wicked_waifus_data::{level_entity_config_data, RawVectorData};
+use wicked_waifus_data::pb_components::teleport::TeleportComponent;
+
+use crate::logic::math::Vector3f;
 use crate::logic::player::Player;
 use crate::logic::utils::world_util;
 
 pub fn on_teleport_data_request(
-    _player: &mut Player,
+    player: &mut Player,
     _: TeleportDataRequest,
     response: &mut TeleportDataResponse,
 ) {
-    // TODO: [WWPS-1] Real implementation should fetch completed / uncompleted from db, lets return completed
     response.error_code = ErrorCode::Success.into();
-    response.ids = wicked_waifus_data::teleporter_data::iter()
-        .map(|teleporter| teleporter.id)
+    response.ids = player.teleports.teleports_data.iter()
+        .map(|teleport| teleport.id)
         .collect::<Vec<_>>();
 }
 
@@ -29,7 +31,7 @@ pub fn on_teleport_transfer_request(
     };
 
     println!("received transfer request for teleport entity id: {}", &teleport.teleport_entity_config_id);
-    let Some(tp) = level_entity_config_data::get(&teleport.teleport_entity_config_id) else {
+    let Some(tp) = level_entity_config_data::get(teleport.map_id, teleport.teleport_entity_config_id) else {
         response.error_code = ErrorCode::ErrTeleportEntityNotExist.into();
         return;
     };
@@ -48,26 +50,20 @@ pub fn on_teleport_transfer_request(
     } else {
         response.error_code = ErrorCode::Success.into();
         response.map_id = teleport.map_id;
-        let (x, y, z) = get_teleport_position(
-            &tp.transform,
-            teleport_component,
-        );
-        response.pos_x = x;
-        response.pos_y = y;
-        response.pos_z = z;
+        let teleport_position = get_teleport_position(&tp.transform, teleport_component);
+        response.pos_x = teleport_position.x;
+        response.pos_y = teleport_position.y;
+        response.pos_z = teleport_position.z;
         response.pitch = 0f32;
         response.yaw = 0f32;
         response.roll = 0f32;
 
-        // TODO: simplify (player.world.curr_map_id, palyer.basic_info.cur_map_id and player.location.instance_id)
-
-        if player.location.instance_id == teleport.map_id {
+        if player.basic_info.cur_map_id == teleport.map_id {
             player.notify(TeleportNotify {
                 map_id: teleport.map_id,
-                pos_x: x,
-                pos_y: y,
-                pos_z: z,
-                pos_a: 0.0,
+                pos: Some(teleport_position.to_protobuf()),
+                rot: None,
+                gravity: None,
                 reason: TeleportReason::Gm.into(),
                 game_ctx: None,
                 transition_option: Some(TransitionOptionPb::default()),
@@ -81,6 +77,7 @@ pub fn on_teleport_transfer_request(
                 transition_option: Some(TransitionOptionPb::default()),
             });
             let scene_info = world_util::build_scene_information(&player);
+            // TODO: Trigger initial join world flow??
             player.notify(JoinSceneNotify {
                 scene_info: Some(scene_info),
                 max_entity_id: i64::MAX,
@@ -100,18 +97,10 @@ pub fn on_teleport_finish_request(
     response.error_code = ErrorCode::Success.into();
 }
 
-fn get_teleport_position(transform: &[RawVectorData], component: &TeleportComponent) -> (f32, f32, f32) {
-    // TODO: Review this formula, allegedly
-    //      - transform[0] is position component
-    //      - transform[2] is rotation component
-    //      - transform[2] is scale component
-    let (x, y, z) = (transform[0].x / 100.0, transform[0].y / 100.0, transform[0].z / 100.0);
-    match &component.teleport_position {
-        None => (x, y, z),
-        Some(teleport_position) => (
-            x + (teleport_position.x.unwrap_or_default()),
-            y + (teleport_position.y.unwrap_or_default()),
-            z + (teleport_position.z.unwrap_or_default()),
-        )
+fn get_teleport_position(transform: &[RawVectorData], component: &TeleportComponent) -> Vector3f {
+    let mut entity_position = Vector3f::from_raw_scaled(&transform[0], &transform[2]);
+    if let Some(teleport_position) = &component.teleport_position {
+        entity_position.add_teleport_position(teleport_position);
     }
+    entity_position
 }

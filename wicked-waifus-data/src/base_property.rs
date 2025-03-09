@@ -1,6 +1,7 @@
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase")]
 pub struct BasePropertyData {
     pub id: i32,

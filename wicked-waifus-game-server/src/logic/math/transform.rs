@@ -51,11 +51,13 @@ impl Transform {
 }
 
 impl From<&[RawVectorData]> for Transform {
+     // - transform[0] is position component
+     // - transform[1] is rotation component
+     // - transform[2] is scale component
     fn from(transform: &[RawVectorData]) -> Self {
         Self {
-            position: Vector3f::from(&transform[0]),
-            rotation: Vector3f::from(&transform[1]),
-            ..Default::default()
+            position: Vector3f::from_raw_scaled(&transform[0], &transform[2]),
+            rotation: Vector3f::from_raw_scaled(&transform[1], &transform[2]),
         }
     }
 }

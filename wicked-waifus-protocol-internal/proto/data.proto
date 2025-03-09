@@ -30,6 +30,16 @@ message RoleSkillNodeData {
   int32 skill_id = 3;
 }
 
+message RoleStats {
+  int32 hp = 1; // Current HP
+  int32 energy = 2; // Ultimate energy
+  int32 special_energy_1 = 3; // Forte
+  int32 special_energy_2 = 4; // Forte
+  int32 special_energy_3 = 5; // Forte
+  int32 special_energy_4 = 6; // Forte
+  int32 element_energy = 7; // Concerto
+}
+
 message RoleData {
   int32 role_id = 1;
   string name = 2;
@@ -47,6 +57,9 @@ message RoleData {
   int32 resonant_chain_group_index = 14;
   int32 equip_weapon = 15;
   int32 skin_id = 16;
+  RoleStats stats = 17;
+  int32 favor_level = 18;
+  int32 favor_exp = 19;
 }
 
 message RoleFormationData {
@@ -97,8 +110,76 @@ message PlayerChatData {
   map<int32, PlayerChatRoomData> rooms = 1;
 }
 
-message PlayerGuides {
-  repeated int32 finished_guides = 1;
+message PlayerGuidesData {
+  repeated int32 started_guides = 1;
+  repeated int32 finished_guides = 2;
+}
+
+message PlayerAdviceData {
+  bool is_show = 1;
+}
+
+message PlayerAdventureTaskStatusData {
+  int32 id = 1;
+  int32 state = 2;
+  int32 progress = 3;
+}
+
+message PlayerAdventureGlobalStatusData {
+  repeated PlayerAdventureTaskStatusData status = 1;
+  int32 now_chapter = 2;
+  int32 received_chapter = 3;
+}
+
+message PlayerAdventureStatusData {
+  repeated PlayerAdventureGlobalStatusData status = 1;
+}
+
+message PlayerInventoryData {
+  map<int32, int32> items = 1;
+}
+
+message PlayerTeleportData {
+  int32 id = 1;
+  int32 map_id = 2;
+  int64 entity_config_id = 3;
+}
+
+message PlayerTeleportsData {
+  repeated PlayerTeleportData teleport_data = 1;
+}
+
+message PlayerTutorialData {
+  int32 id = 1;
+  uint32 create_time = 2;
+  bool get_award = 3;
+}
+
+message PlayerTutorialsData {
+  repeated PlayerTutorialData tutorials = 1;
+}
+
+message PlayerMapTraceData {
+  repeated int32 traces = 1;
+}
+
+message PlayerMonthCardData {
+  int32 days = 1;
+  int32 last_received_day = 2;
+}
+
+enum PlayerMcElementType {
+  Glacio = 0;
+  Fusion = 1;
+  Electro = 2;
+  Aero = 3;
+  Spectro = 4;
+  Havoc = 5;
+}
+
+message PlayerMcElementData {
+  repeated PlayerMcElementType unlocked_elements = 1;
+  PlayerMcElementType current_element = 2;
 }
 
 message PlayerSaveData {
@@ -108,5 +189,13 @@ message PlayerSaveData {
   PlayerFuncData func_data = 4;
   PlayerExploreToolsData explore_tools_data = 5;
   PlayerChatData chat_data = 6;
-  PlayerGuides guides = 7;
+  PlayerGuidesData guides = 7;
+  PlayerAdviceData advise = 8;
+  PlayerAdventureStatusData adventure_status = 9;
+  PlayerInventoryData inventory = 10;
+  PlayerTeleportsData teleports = 11;
+  PlayerTutorialsData tutorials = 12;
+  PlayerMapTraceData map_trace = 13;
+  PlayerMonthCardData month_card = 14;
+  PlayerMcElementData mc_element = 15;
 }

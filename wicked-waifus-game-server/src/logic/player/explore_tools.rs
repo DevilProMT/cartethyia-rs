@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use wicked_waifus_data::explore_tools_data;
-use wicked_waifus_protocol::{ExploreSkillRoulette, ExploreSkillRouletteUpdateNotify, ExploreToolAllNotify};
+use wicked_waifus_protocol::{ExploreSkillRoulette, ExploreSkillRouletteUpdateNotify, ExploreToolAllNotify, VisionExploreSkillNotify};
 use wicked_waifus_protocol_internal::PlayerExploreToolsData;
 
 type Roulette = [i32; 8];
@@ -33,10 +33,17 @@ impl ExploreTools {
     }
 
     pub fn build_explore_tool_all_notify(&self) -> ExploreToolAllNotify {
+        // TODO: NewUnlock handling
         ExploreToolAllNotify {
             skill_list: self.unlocked_explore_skills.iter().cloned().collect(),
             explore_skill: self.active_explore_skill,
             ..Default::default()
+        }
+    }
+
+    pub fn build_vision_explore_skill_notify(&self) -> VisionExploreSkillNotify {
+        VisionExploreSkillNotify {
+            explore_skill: self.active_explore_skill
         }
     }
 

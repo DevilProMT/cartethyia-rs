@@ -24,7 +24,7 @@ pub fn on_gacha_request(
 
     // TODO: ensure we have enough elements before pulling
 
-    match gacha_service.pull(request.gacha_id, request.gacha_times) {
+    match gacha_service.pull(player, request.gacha_id, request.gacha_times) {
         Ok(results) => {
             match consume_tides(player, request.gacha_id, request.gacha_times) {
                 Ok(_) => {

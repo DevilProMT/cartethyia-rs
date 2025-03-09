@@ -1,5 +1,6 @@
 use wicked_waifus_data::RawVectorData;
 use wicked_waifus_protocol::Vector;
+use wicked_waifus_data::pb_components::teleport::TeleportPosition;
 use wicked_waifus_protocol_internal::VectorData;
 
 #[derive(Default, Clone, PartialEq, Debug)]
@@ -41,14 +42,18 @@ impl Vector3f {
             z: data.get_z(),
         }
     }
-}
 
-impl From<&RawVectorData> for Vector3f {
-    fn from(transform: &RawVectorData) -> Self {
+    pub fn from_raw_scaled(transform: &RawVectorData, scale: &RawVectorData) -> Self {
         Self {
-            x: transform.x / 100.0,
-            y: transform.y / 100.0,
-            z: transform.z / 100.0,
+            x: transform.x / scale.x,
+            y: transform.y / scale.y,
+            z: transform.z / scale.z,
         }
+    }
+
+    pub fn add_teleport_position(&mut self, teleport_position: &TeleportPosition) {
+        self.x += teleport_position.x.unwrap_or_default();
+        self.y += teleport_position.y.unwrap_or_default();
+        self.z += teleport_position.z.unwrap_or_default();
     }
 }

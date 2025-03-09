@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase")]
 pub struct ExploreToolsData {
     pub phantom_skill_id: i32,

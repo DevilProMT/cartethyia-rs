@@ -48,6 +48,12 @@ pub fn on_explore_skill_roulette_set_request(
     match illegal_skill {
         true => response.error_code = ErrorCode::ErrRouletteFuncIdInvaild.into(),
         false => {
+            player.explore_tools.roulette = request.skill_roulettes.get(0).unwrap().skill_ids.iter()
+                .map(|&skill_id| skill_id)
+                .collect::<Vec<i32>>()
+                .as_slice()
+                .try_into()
+                .unwrap();
             response.error_code = ErrorCode::Success.into();
             response.skill_roulettes = request.skill_roulettes;
         }

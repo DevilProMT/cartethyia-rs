@@ -1,8 +1,6 @@
 use tracing::debug;
 
-use wicked_waifus_protocol::{ErrorCode, PrivateChatHistoryRequest, PrivateChatHistoryResponse,
-                           PrivateChatOperateRequest, PrivateChatOperateResponse,
-                           PrivateChatOperateType, PrivateChatRequest, PrivateChatResponse};
+use wicked_waifus_protocol::{ErrorCode, PrivateChatDataRequest, PrivateChatDataResponse, PrivateChatHistoryRequest, PrivateChatHistoryResponse, PrivateChatOperateRequest, PrivateChatOperateResponse, PrivateChatOperateType, PrivateChatRequest, PrivateChatResponse};
 
 use crate::logic::player::Player;
 
@@ -43,20 +41,12 @@ pub fn on_private_chat_request(
     };
 }
 
-pub fn on_private_chat_operate_request(
-    _player: &Player,
-    request: PrivateChatOperateRequest,
-    response: &mut PrivateChatOperateResponse,
+pub fn on_private_chat_data_request(
+    _: &Player,
+    _: PrivateChatDataRequest,
+    _: &mut PrivateChatDataResponse,
 ) {
-    let operate_type = PrivateChatOperateType::try_from(request.operate_type).unwrap();
-    if operate_type == PrivateChatOperateType::ReadMsg && request.target_player_id == 0 {
-        // TODO: Additional actions?
-        response.error_code = ErrorCode::Success.into();
-    } else {
-        // TODO: Additional checks
-        debug!("on_private_chat_operate_request called for unimplemented case: {:?}", request);
-        response.error_code = ErrorCode::Success.into();
-    }
+
 }
 
 pub fn on_private_chat_history_request(
@@ -73,5 +63,22 @@ pub fn on_private_chat_history_request(
             response.data = Some(chat_history_content_proto)
         }
         Err(error_code) => response.error_code = error_code
+    }
+}
+
+
+pub fn on_private_chat_operate_request(
+    _player: &Player,
+    request: PrivateChatOperateRequest,
+    response: &mut PrivateChatOperateResponse,
+) {
+    let operate_type = PrivateChatOperateType::try_from(request.operate_type).unwrap();
+    if operate_type == PrivateChatOperateType::ReadMsg && request.target_player_id == 0 {
+        // TODO: Additional actions?
+        response.error_code = ErrorCode::Success.into();
+    } else {
+        // TODO: Additional checks
+        debug!("on_private_chat_operate_request called for unimplemented case: {:?}", request);
+        response.error_code = ErrorCode::Success.into();
     }
 }

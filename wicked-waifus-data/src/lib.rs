@@ -3,9 +3,15 @@ use std::io::BufReader;
 
 use paste::paste;
 
+pub use level_entity_config::LevelEntityConfigData;
 pub use misc_data::*;
 
+pub mod node_data;
+pub mod pb_components;
+pub mod text_map_data;
+
 mod misc_data;
+
 #[derive(thiserror::Error, Debug)]
 pub enum LoadDataError {
     #[error("I/O error: {0}")]
@@ -35,9 +41,12 @@ macro_rules! json_data {
 
         fn load_json_data(base_path: &str) -> Result<(), LoadDataError> {
             $(paste! {
-                let file = File::open(&format!("{}/{}.json", base_path, stringify!($table_type)))?;
+                let path = format!("{}/{}.json", base_path, stringify!($table_type));
+                tracing::debug!("Loading data started: {path}");
+                let file = File::open(&path)?;
                 let reader = BufReader::new(file);
                 let _ = [<$table_type:snake _data>]::TABLE.set(serde_json::from_reader(reader)?);
+                tracing::info!("Loading data finished: {path}");
             })*
 
             Ok(())
@@ -64,7 +73,7 @@ macro_rules! json_hash_table_data {
                     TABLE.get().unwrap().iter()
                 }
 
-                pub fn get(k: &$key_type) -> Option<&Data> {
+                pub fn get(k: &$key_type) -> Option<&'static Data> {
                     TABLE.get().unwrap().get(k)
                 }
             }
@@ -72,14 +81,19 @@ macro_rules! json_hash_table_data {
 
         fn load_json_hash_table_data(base_path: &str) -> Result<(), LoadDataError> {
             $(paste! {
-                let file = File::open(&format!("{}/{}.json", base_path, stringify!($table_type)))?;
+                let path = format!("{}/{}.json", base_path, stringify!($table_type));
+                tracing::debug!("Loading data started: {path}");
+                let file = File::open(&path)?;
                 let reader = BufReader::new(file);
+                // Key.clone() is required for String keys, for other types like ints, it doesn't
+                // have any effect since clone is *value
                 let _ = [<$table_type:snake _data>]::TABLE.set(
                     serde_json::from_reader::<BufReader<File>, Vec<[<$table_type:snake _data>]::Data>>(reader)?
                         .into_iter()
-                        .map(|element| (element.$key_param, element))
+                        .map(|element| (element.$key_param.clone(), element))
                         .collect::<std::collections::HashMap<_, _>>()
                 );
+                tracing::info!("Loading data finished: {path}");
             })*
 
             Ok(())
@@ -90,105 +104,112 @@ macro_rules! json_hash_table_data {
 pub fn load_all_json_data(base_path: &str) -> Result<(), LoadDataError> {
     load_json_data(base_path)?;
     load_json_hash_table_data(base_path)?;
+    load_json_entity_level_config_data(base_path)?;
     Ok(())
 }
 
 json_data! {
+    Achievement;
     AdventureTask;
     Area;
     BaseProperty;
+    CalabashDevelopReward;
+    CalabashLevel;
+    Damage;
+    DungeonDetection;
+    ExchangeReward;
+    ExchangeShared;
+    ExploreProgress;
     ExploreTools;
+    FavorGoods;
+    FavorLevel;
+    FavorStory;
+    FavorWord;
+    ForgeFormula;
     FunctionCondition;
     Gacha;
     GachaPool;
     GachaViewInfo;
+    GuideGroup;
     GuideTutorial;
     InstanceDungeon;
+    ItemExchangeContent;
+    // LevelPlayData;
+    LevelPlayNodeData;
+    LivenessTask;
     LordGym;
+    MonsterDetection;
+    MonsterPropertyGrowth;
+    Motion;
+    QuestNodeData;
+    ResonanceAmplification;
+    ResonantChain;
+    RoleBreach;
+    RoleExpItem;
     RoleInfo;
+    RoleLevelConsume;
+    RolePropertyGrowth;
+    SilentAreaDetection;
+    SynthesisFormula;
     Teleporter;
+    WeaponBreach;
     WeaponConf;
+    WeaponExpItem;
+    WeaponLevel;
+    WeaponPropertyGrowth;
+    WeaponReson;
 }
 
 json_hash_table_data! {
+    AiBase, id, i32;
+    AiStateMachineConfig, id, String;
+    BlueprintConfig, blueprint_type, String;
     DragonPool, id, i32;
-    LevelEntityConfig, entity_id, i64;
-    // TemplateConfig, blueprint_type, String;
+    DropPackage, id, i32;
+    TemplateConfig, blueprint_type, String;
 }
 
-mod textmap;
+mod level_entity_config;
 
-pub mod text_map_data {
-    use std::collections::{HashMap, HashSet};
-    use std::fs::File;
-    use std::io::BufReader;
+pub mod level_entity_config_data {
+    use std::collections::HashMap;
     use std::sync::OnceLock;
 
-    use crate::LoadDataError;
-    use crate::textmap::TextMapData;
-    use crate::gacha_view_info_data;
+    pub(crate) type Data = super::LevelEntityConfigData;
+    pub(crate) static TABLE: OnceLock<HashMap<String, Data>> = OnceLock::new();
 
-    static EMPTY: OnceLock<HashMap<String, String>> = OnceLock::new();
-    static TABLE: OnceLock<HashMap<String, HashMap<String, String>>> = OnceLock::new();
-
-    pub fn load_textmaps(base_path: &str) -> Result<(), LoadDataError> {
-        // TODO: Ideally we would expose a function here to allow other components to add to the
-        //  filter, since right now only gacha uses it, we can do this
-        let filters = get_filters();
-        let languages = std::fs::read_dir(base_path)?
-            .filter_map(|entry| entry.ok())
-            .filter(|entry| entry.path().is_dir())
-            .collect::<Vec<_>>();
-        let mut result: HashMap<String, HashMap<String, String>> = HashMap::new();
-        for language in languages {
-            let lang_id = language.file_name().to_str().unwrap().to_string();
-            let file = File::open(&format!("{base_path}/{lang_id}/multi_text/MultiText.json"))?;
-            let reader = BufReader::new(file);
-            result.insert(
-                lang_id,
-                serde_json::from_reader::<BufReader<File>, Vec<TextMapData>>(reader)?
-                    .into_iter()
-                    .filter(|element| filters.contains(&element.id))
-                    .map(|element| (element.id, element.content))
-                    .collect::<HashMap<_, _>>(),
-            );
-        }
-        let _ = TABLE.set(result);
-        Ok(())
+    pub fn iter() -> std::collections::hash_map::Iter<'static, String, Data> {
+        TABLE.get().unwrap().iter()
     }
 
-    pub fn get_textmap(language: i32) -> &'static HashMap<String, String> {
-        let (text_code, _audio_code) = get_language_from_i32(language);
-        TABLE.get_or_init(|| HashMap::new())
-            .get(text_code)
-            .unwrap_or(EMPTY.get_or_init(|| HashMap::new()))
+    pub fn get(map_id: i32, entity_id: i64) -> Option<&'static Data> {
+        TABLE.get().unwrap().get(&create_key_internal(map_id, entity_id))
     }
 
-    fn get_language_from_i32(language: i32) -> (&'static str, &'static str) {
-        match language {
-            0 => ("zh-Hans", "zh"),
-            1 => ("en", "en"),
-            2 => ("ja", "ja"),
-            3 => ("ko", "ko"),
-            4 => ("ru", "en"),
-            5 => ("zh-Hant", "zh"),
-            6 => ("de", "en"),
-            7 => ("es", "en"),
-            8 => ("pt", "en"),
-            9 => ("id", "en"),
-            10 => ("fr", "en"),
-            11 => ("vi", "en"),
-            12 => ("th", "en"),
-            _ => ("en", "en"),
-        }
+    #[inline(always)]
+    pub fn create_key(element: &Data) -> String {
+        create_key_internal(element.map_id, element.entity_id)
     }
 
-    fn get_filters() -> HashSet<String> {
-        let mut filters = HashSet::new();
-        for gacha_view_info in gacha_view_info_data::iter() {
-            filters.insert(gacha_view_info.summary_title.clone());
-            filters.insert(gacha_view_info.summary_describe.clone());
-        }
-        filters
+    #[inline(always)]
+    fn create_key_internal(map_id: i32, entity_id: i64) -> String {
+        format!("{}_{}", map_id, entity_id)
     }
+}
+
+fn load_json_entity_level_config_data(base_path: &str) -> Result<(), LoadDataError> {
+    let path = format!("{}/LevelEntityConfig.json", base_path);
+    tracing::debug!("Loading data started: {path}");
+    let file = File::open(&path)?;
+    let reader = BufReader::new(file);
+    let _ = level_entity_config_data::TABLE.set(
+        serde_json::from_reader::<BufReader<File>, Vec<level_entity_config_data::Data>>(reader)?
+            .into_iter()
+            .map(|element| (level_entity_config_data::create_key(&element), element))
+            .collect::<std::collections::HashMap<_, _>>()
+    );
+    tracing::info!("Loading data finished: {path}");
+
+
+    Ok(())
 }

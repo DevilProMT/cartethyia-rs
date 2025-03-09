@@ -1,6 +1,7 @@
 pub mod component;
 pub mod entity;
 pub mod world;
+pub mod buf;
 
 #[macro_export]
 macro_rules! find_component {

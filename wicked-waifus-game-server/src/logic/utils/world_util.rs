@@ -1,58 +1,80 @@
-use wicked_waifus_protocol::{DFsm, EEntityType, EntityAddNotify, EntityConfigType, EntityPb,
-                           EntityRemoveInfo, EntityRemoveNotify, EntityState, FightRoleInfo,
-                           FightRoleInfos, LivingStatus, SceneInformation, SceneMode,
-                           ScenePlayerInformation, SceneTimeInfo};
-use wicked_waifus_data::{base_property_data, LevelEntityConfigData};
+use wicked_waifus_protocol::{
+    EEntityType, ERemoveEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo,
+    EntityRemoveNotify, EntityState, FightRoleInfo, FightRoleInfos, LivingStatus, SceneInformation,
+    SceneMode, ScenePlayerInformation, SceneTimeInfo,
+};
 
+use wicked_waifus_data::pb_components::ComponentsData;
+use wicked_waifus_data::{
+    blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
+};
+
+use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, StateTag, Tag};
+use crate::logic::ecs::entity::EntityBuilder;
+use crate::logic::ecs::world::World;
+use crate::logic::math::Transform;
+use crate::logic::player::Player;
+use crate::logic::utils::{entity_serializer, tag_utils};
+use crate::logic::utils::growth_utils::get_monster_props_by_level;
 use crate::logic::{
     components::{
-        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerEntityMarker,
+        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
         Position, RoleSkin, Visibility, VisionSkill,
     },
     ecs::component::ComponentContainer,
 };
-use crate::logic::components::{Autonomous, Fsm, MonsterAi, StateTag, Tag};
-use crate::logic::ecs::entity::Entity;
-use crate::logic::ecs::world::{World, WorldEntity};
-use crate::logic::math::Transform;
-use crate::logic::player::Player;
-use crate::logic::utils::entity_serializer;
 use crate::query_with;
 
 #[macro_export]
 macro_rules! create_player_entity_pb {
-    ($role_list:expr, $cur_map_id:expr, $world:expr, $player_id:expr, $position:expr, $explore_tools:expr) => {{
+    ($role_list:expr, $cur_map_id:expr, $player:expr, $player_id:expr, $position:expr, $explore_tools:expr) => {{
+        let mut world_ref = $player.world.borrow_mut();
+        let world = world_ref.get_mut_world_entity();
+
+        let current_formation = $player.formation_list.get(&$player.cur_formation_id).unwrap();
+        let cur_role_id = current_formation.cur_role;
+
         let mut pbs = Vec::new();
 
-        let mut general_buffs = FightBuff::default();
-        general_buffs.add_generic_permanent_buffs();
-
         for role in $role_list {
-             // Once per character buffs are implemented, add a mut on role_buffs
-            let role_buffs = general_buffs.clone();
+            let entity = world.create_entity(
+                role.role_id,
+                EEntityType::Player.into(),
+                $cur_map_id,
+            );
+            // Once per character buffs are implemented, add a mut on role_buffs
+            let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id as i64);
+            let buf_manager = FightBuff {
+                fight_buff_infos,
+                list_buff_effect_cd: vec![],
+            };
 
-            let role_id: i32 = role.role_id;
-            let base_property = base_property_data::iter()
-                .find(|d| d.id == role_id)
-                .expect("macro create_role_entity_pb: Base property data not found");
-
-            let entity = $world
-                .create_entity(role_id, EEntityType::Player.into(), $cur_map_id)
-                .with(ComponentContainer::PlayerEntityMarker(PlayerEntityMarker))
+            let entity = world.create_builder(entity)
+                .with(ComponentContainer::PlayerOwnedEntityMarker(PlayerOwnedEntityMarker {
+                    entity_type: EEntityType::Player,
+                }))
                 .with(ComponentContainer::EntityConfig(EntityConfig {
-                    config_id: role_id,
+                    camp: 0,
+                    config_id: role.role_id,
                     config_type: EntityConfigType::Character,
                     entity_type: EEntityType::Player.into(),
-                    entity_state: EntityState::Default
+                    entity_state: EntityState::Default,
                 }))
                 .with(ComponentContainer::OwnerPlayer(OwnerPlayer($player_id)))
                 .with(ComponentContainer::Position(Position($position)))
-                .with(ComponentContainer::Visibility(Visibility(
-                    role_id == role_id,
-                )))
-                .with(ComponentContainer::Attribute(Attribute::from_data(
-                    base_property,
-                )))
+                .with(ComponentContainer::Visibility(Visibility{
+                    is_visible: role.role_id == cur_role_id,
+                    is_actor_visible: true,
+                }))
+                // TODO: Check if role has hardness or rage_mode
+                // TODO: Support AddProp from Equipment(Echo, weapon, buffs??), weapon base state goes to base_prop too.
+                .with(ComponentContainer::Attribute(
+                     Attribute::from_data(
+                         &role.get_base_properties(),
+                         None,
+                         None,
+                     )
+                ))
                 .with(ComponentContainer::Movement(Movement::default()))
                 .with(ComponentContainer::Equip(Equip {
                     weapon_id: role.equip_weapon,
@@ -64,7 +86,7 @@ macro_rules! create_player_entity_pb {
                 .with(ComponentContainer::RoleSkin(RoleSkin {
                     skin_id: role.skin_id,
                 }))
-                .with(ComponentContainer::FightBuff(role_buffs))
+                .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
 
             let mut pb = EntityPb {
@@ -72,7 +94,7 @@ macro_rules! create_player_entity_pb {
                 ..Default::default()
             };
 
-            $world
+            world
                 .get_entity_components(entity.entity_id)
                 .into_iter()
                 .for_each(|comp| comp.set_pb_data(&mut pb));
@@ -98,21 +120,29 @@ pub fn add_player_entities(player: &Player) {
         .map(|role_id| player.role_list.get(&role_id).unwrap())
         .collect::<Vec<_>>();
     let cur_role_id = current_formation.cur_role;
-    let mut general_buffs = FightBuff::default();
-    general_buffs.add_generic_permanent_buffs();
 
     if world.active_entity_empty() {
         for role in role_vec {
+            let entity = world.create_entity(
+                role.role_id,
+                EEntityType::Player.into(),
+                player.basic_info.cur_map_id,
+            );
             // Once per character buffs are implemented, add a mut on role_buffs
-            let role_buffs = general_buffs.clone();
+            let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id as i64);
+            let buf_manager = FightBuff {
+                fight_buff_infos,
+                list_buff_effect_cd: vec![],
+            };
             let entity = world
-                .create_entity(
-                    role.role_id,
-                    EEntityType::Player.into(),
-                    player.basic_info.cur_map_id,
-                )
-                .with(ComponentContainer::PlayerEntityMarker(PlayerEntityMarker))
+                .create_builder(entity)
+                .with(ComponentContainer::PlayerOwnedEntityMarker(
+                    PlayerOwnedEntityMarker {
+                        entity_type: EEntityType::Player,
+                    },
+                ))
                 .with(ComponentContainer::EntityConfig(EntityConfig {
+                    camp: 0,
                     config_id: role.role_id,
                     config_type: EntityConfigType::Character,
                     entity_type: EEntityType::Player.into(),
@@ -124,15 +154,17 @@ pub fn add_player_entities(player: &Player) {
                 .with(ComponentContainer::Position(Position(
                     player.location.position.clone(),
                 )))
-                .with(ComponentContainer::Visibility(Visibility(
-                    role.role_id == cur_role_id,
-                )))
+                .with(ComponentContainer::Visibility(Visibility {
+                    is_visible: role.role_id == cur_role_id,
+                    is_actor_visible: true,
+                }))
+                // TODO: from role
+                // TODO: Check if role has hardness or rage_mode
+                // TODO: Support AddProp from Equipment(Echo, weapon, buffs??), weapon base state goes to base_prop too.
                 .with(ComponentContainer::Attribute(Attribute::from_data(
-                    base_property_data::iter()
-                        .find(|d| d.id == role.role_id)
-                        .unwrap_or_else(|| {
-                            base_property_data::iter().find(|d| d.id == 1102).unwrap()
-                        }),
+                    &role.get_base_properties(),
+                    None,
+                    None,
                 )))
                 .with(ComponentContainer::Movement(Movement::default()))
                 .with(ComponentContainer::Equip(Equip {
@@ -145,7 +177,7 @@ pub fn add_player_entities(player: &Player) {
                 .with(ComponentContainer::RoleSkin(RoleSkin {
                     skin_id: role.skin_id,
                 }))
-                .with(ComponentContainer::FightBuff(role_buffs))
+                .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
 
             tracing::debug!(
@@ -184,32 +216,32 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
         .map(|sp| {
             let (cur_role_id, transform, _equip) = query_with!(
                 world.get_world_entity(),
-                PlayerEntityMarker,
+                PlayerOwnedEntityMarker,
                 OwnerPlayer,
                 Visibility,
                 EntityConfig,
                 Position,
                 Equip
             )
-                .into_iter()
-                .find_map(|(_, _, owner, visibility, conf, pos, equip)| {
-                    (sp.player_id == owner.0 && visibility.0).then_some((
-                        conf.config_id,
-                        pos.0.clone(),
-                        equip.weapon_id,
-                    ))
-                })
-                .unwrap_or_default();
+            .into_iter()
+            .find_map(|(_, _, owner, visibility, conf, pos, equip)| {
+                (sp.player_id == owner.0 && visibility.is_visible).then_some((
+                    conf.config_id,
+                    pos.0.clone(),
+                    equip.weapon_id,
+                ))
+            })
+            .unwrap_or_default();
 
             let active_characters = query_with!(
                 world.get_world_entity(),
-                PlayerEntityMarker,
+                PlayerOwnedEntityMarker,
                 OwnerPlayer,
                 EntityConfig,
                 RoleSkin
             )
-                .into_iter()
-                .filter(|(_, _, owner, _, _)| owner.0 == sp.player_id);
+            .into_iter()
+            .filter(|(_, _, owner, _, _)| owner.0 == sp.player_id);
 
             ScenePlayerInformation {
                 cur_role: cur_role_id,
@@ -230,7 +262,7 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
                             entity_id: id.into(),
                             role_id: conf.config_id,
                             on_stage_without_control: false,
-                            role_skin_id: role_skin.skin_id,
+                            // role_skin_id: role_skin.skin_id,
                         })
                         .collect(),
                     ..Default::default()
@@ -242,91 +274,19 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
         .collect()
 }
 
-pub fn build_monster_entity(world: &mut WorldEntity, config_id: i32, map_id: i32, transform: Transform) -> Entity {
-    // TODO: Check for more components, AI and so
-    world.create_entity(config_id, EEntityType::Monster.into(), map_id)
-        .with(ComponentContainer::EntityConfig(EntityConfig {
-            config_id,
-            config_type: EntityConfigType::Level,
-            entity_type: EEntityType::Monster.into(),
-            entity_state: EntityState::Born,
-        }))
-        .with(ComponentContainer::Position(Position(transform)))
-        .with(ComponentContainer::Visibility(Visibility(true)))
-        .with(ComponentContainer::Attribute(Attribute::from_data(
-            base_property_data::iter()
-                .find(|d| d.id == 600000100) // TODO: Implement monster stats
-                .unwrap(),
-        )))
-        .with(ComponentContainer::MonsterAi(MonsterAi {
-            weapon_id: 0,
-            hatred_group_id: 0,
-            ai_team_init_id: 100,
-            combat_message_id: 0,
-        }))
-        .with(ComponentContainer::Fsm(Fsm {
-            fsms: vec![
-                DFsm {
-                    fsm_id: 10007,
-                    current_state: 10013,
-                    flag: 0,
-                    k_ts: 0,
-                },
-                DFsm {
-                    fsm_id: 10007,
-                    current_state: 10015,
-                    flag: 0,
-                    k_ts: 0,
-                },
-                DFsm {
-                    fsm_id: 10007,
-                    current_state: 10012,
-                    flag: 0,
-                    k_ts: 0,
-                },
-            ],
-            hash_code: 0,
-            common_hash_code: 0,
-            black_board: vec![],
-            fsm_custom_blackboard_datas: None,
-        }))
-        .with(ComponentContainer::Movement(Movement::default()))
-        .build()
-}
+pub fn remove_entity(player: &Player, entity_id: i64, remove_type: ERemoveEntityType) {
+    let mut world_ref = player.world.borrow_mut();
+    let world = world_ref.get_mut_world_entity();
 
-pub fn build_teleport_entity(world: &mut WorldEntity,
-                             player_id: i32,
-                             config_id: i32,
-                             map_id: i32,
-                             tp_unlocked: bool,
-                             transform: Transform) -> Entity {
-    // TODO: Make this better
-    let teleport_state_tag = match tp_unlocked {
-        true => -3775711,
-        false => 1152559349
-    };
-    // TODO: Check for more components, InteractComponent & NearbyTrackingComponentPb
-    world.create_entity(config_id, EEntityType::SceneItem.into(), map_id)
-        .with(ComponentContainer::EntityConfig(EntityConfig {
-            config_id,
-            config_type: EntityConfigType::Level,
-            entity_type: EEntityType::SceneItem.into(),
-            entity_state: EntityState::Default,
-        }))
-        .with(ComponentContainer::Position(Position(transform)))
-        .with(ComponentContainer::Visibility(Visibility(true)))
-        .with(ComponentContainer::StateTag(StateTag {
-            state_tag_id: teleport_state_tag,
-        }))
-        .with(ComponentContainer::Autonomous(Autonomous {
-            autonomous_id: player_id,
-        }))
-        .with(ComponentContainer::Tag(Tag {
-            gameplay_tags: vec![],
-            entity_common_tags: vec![teleport_state_tag],
-            init_gameplay_tag: false,
-        }))
-        .build()
+    if world.remove_entity(entity_id as i32) {
+        player.notify(EntityRemoveNotify {
+            remove_infos: vec![EntityRemoveInfo {
+                entity_id,
+                r#type: remove_type.into(),
+            }],
+            is_remove: true,
+        });
+    }
 }
 
 pub fn remove_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
@@ -345,13 +305,16 @@ pub fn remove_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
     }
     for entity_id in removed_entities {
         player.notify(EntityRemoveNotify {
-            remove_infos: vec![EntityRemoveInfo { entity_id, r#type: 0 }],
+            remove_infos: vec![EntityRemoveInfo {
+                entity_id,
+                r#type: 0,
+            }],
             is_remove: true,
         });
     }
 }
 
-pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
+pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], external_awake: bool) {
     let mut added_entities = Vec::with_capacity(entities.len());
     // Enclose to drop borrow mut ASAP
     {
@@ -359,26 +322,113 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
         let world = world_ref.get_mut_world_entity();
 
         for entity in entities {
-            // TODO: review other types
-            if entity.blueprint_type.contains("Monster") {
-                added_entities.push(build_monster_entity(
-                    world,
-                    entity.entity_id as i32, // TODO: Should be i64
-                    entity.map_id,
-                    Transform::from(&entity.transform[..]),
-                ));
-            } else if entity.blueprint_type.starts_with("Teleport") {
-                added_entities.push(build_teleport_entity(
-                    world,
-                    player.basic_info.id,
-                    entity.entity_id as i32, // TODO: Should be i64
-                    entity.map_id,
-                    true, // TODO: Make this persistent within player
-                    Transform::from(&entity.transform[..]),
-                ));
-            } else {
-                //tracing::debug!("Unhandled entity to be added of type: {}", entity.blueprint_type);
+            // Skip hidden entities
+            if entity.is_hidden {
+                tracing::debug!("Hidden entity with config id: {}", entity.entity_id);
+                continue;
             }
+            if entity.in_sleep && !external_awake {
+                tracing::debug!(
+                    "Sleep entity with config id not spawned: {}",
+                    entity.entity_id
+                );
+                continue;
+            }
+
+            let blueprint_config = blueprint_config_data::get(&entity.blueprint_type);
+            let template_config = template_config_data::get(&entity.blueprint_type);
+            if blueprint_config.is_none() || template_config.is_none() {
+                continue;
+            }
+
+            let entity_logic: EntityLogic = blueprint_config.unwrap().entity_logic;
+            let (config_type, entity_type, mut entity_state) = match entity_logic {
+                EntityLogic::Item => (
+                    EntityConfigType::Level,
+                    EEntityType::SceneItem,
+                    EntityState::Default,
+                ),
+                EntityLogic::Animal => (
+                    EntityConfigType::Level,
+                    EEntityType::Animal,
+                    EntityState::Default,
+                ),
+                EntityLogic::Monster => (
+                    EntityConfigType::Level,
+                    EEntityType::Monster,
+                    EntityState::Born,
+                ),
+                EntityLogic::Vehicle => (
+                    EntityConfigType::Level,
+                    EEntityType::Vehicle,
+                    EntityState::Default,
+                ),
+                EntityLogic::Npc => (
+                    EntityConfigType::Level,
+                    EEntityType::Npc,
+                    EntityState::Default,
+                ),
+                EntityLogic::Vision => (
+                    EntityConfigType::Level,
+                    EEntityType::Vision,
+                    EntityState::Default,
+                ),
+                EntityLogic::ClientOnly => (
+                    EntityConfigType::Level,
+                    EEntityType::ClientOnly,
+                    EntityState::Default,
+                ),
+                EntityLogic::ServerOnly => {
+                    tracing::debug!("Unhandled entity to be added of logic: {:?} with blueprint_type {} and id: {}", entity_logic, entity.blueprint_type, entity.entity_id);
+                    continue;
+                }
+                EntityLogic::Custom => (
+                    EntityConfigType::Level,
+                    EEntityType::Custom,
+                    EntityState::Default,
+                ),
+            };
+
+            if entity.in_sleep {
+                entity_state = EntityState::Sleep;
+            }
+
+            let config_id = entity.entity_id as i32; // TODO: i64????
+            let map_id = entity.map_id;
+            let components: ComponentsData = entity
+                .components_data
+                .merge_with_template(&template_config.unwrap().components_data);
+            let tmp_entity = world.create_entity(config_id, config_type.into(), map_id);
+            let mut builder = world.create_builder(tmp_entity);
+            builder
+                .with(ComponentContainer::EntityConfig(EntityConfig {
+                    camp: components
+                        .base_info_component
+                        .as_ref()
+                        .and_then(|b| b.camp)
+                        .unwrap_or(0),
+                    config_id,
+                    config_type,
+                    entity_type,
+                    entity_state,
+                }))
+                .with(ComponentContainer::Position(Position(Transform::from(
+                    &entity.transform[..],
+                ))))
+                .with(ComponentContainer::Visibility(Visibility {
+                    is_visible: true,
+                    is_actor_visible: true,
+                }))
+                // Some entities may not actually have movement, but it's okay since we won't
+                // receive move package push for them
+                .with(ComponentContainer::Movement(Movement::default()));
+
+            build_autonomous_component(&mut builder, player.basic_info.id, entity_logic);
+            build_interact_component(&mut builder, &components);
+            build_tags_components(&mut builder, &components, player, blueprint_config.unwrap().entity_type, config_id as i64);
+            build_attribute_component(&mut builder, &components, player.location.instance_id);
+            build_ai_components(&mut builder, &components);
+            added_entities.push(builder.build());
         }
     }
 
@@ -391,7 +441,8 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
             ..Default::default()
         };
 
-        world.get_entity_components(entity.entity_id)
+        world
+            .get_entity_components(entity.entity_id)
             .into_iter()
             .for_each(|comp| comp.set_pb_data(&mut pb));
 
@@ -399,5 +450,125 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
             entity_pbs: vec![pb],
             remove_tag_ids: true,
         });
+    }
+}
+
+#[inline(always)]
+fn build_autonomous_component(builder: &mut EntityBuilder, id: i32, logic: EntityLogic) {
+    // TODO: Review if other types have autonomous
+    match logic {
+        EntityLogic::Item => {
+            builder.with(ComponentContainer::Autonomous(Autonomous {
+                autonomous_id: id,
+            }));
+        }
+        EntityLogic::Animal => {}
+        EntityLogic::Monster => {}
+        EntityLogic::Vehicle => {}
+        EntityLogic::Npc => {}
+        EntityLogic::Vision => {}
+        EntityLogic::ClientOnly => {}
+        EntityLogic::ServerOnly => {}
+        EntityLogic::Custom => {}
+    };
+}
+
+#[inline(always)]
+fn build_interact_component(builder: &mut EntityBuilder, components: &ComponentsData) {
+    if components.interact_component.is_some() {
+        builder.with(ComponentContainer::Interact(Interact {}));
+    }
+}
+
+#[inline(always)]
+fn build_tags_components(
+    builder: &mut EntityBuilder,
+    components: &ComponentsData,
+    player: &Player,
+    entity_type: EntityType,
+    config_id: i64,
+) {
+    if let Some(entity_state_component) = &components.entity_state_component {
+        let state = match entity_type {
+            EntityType::Teleporter | EntityType::TemporaryTeleporter => {
+                let result = player.teleports.teleports_data.iter()
+                    .find(|teleporter| teleporter.entity_config_id == config_id);
+                match result.is_some() {
+                    true => tag_utils::get_tag_id_by_name("关卡.Common.状态.激活"),
+                    false => tag_utils::get_tag_id_by_name("关卡.Common.状态.常态"),
+                }
+            }
+            _ => {
+                // TODO: how to get states???
+                let unlocked = false;
+                match unlocked {
+                    true => tag_utils::get_tag_id_by_name("关卡.Common.状态.激活"),
+                    false => tag_utils::get_tag_id_by_name("关卡.Common.状态.常态"),
+                }
+            }
+        };
+        builder
+            .with(ComponentContainer::StateTag(StateTag {
+                state_tag_id: state,
+            }))
+            .with(ComponentContainer::Tag(Tag {
+                // TODO:
+                gameplay_tags: vec![],
+                entity_common_tags: vec![state],
+                // TODO:
+                init_gameplay_tag: false,
+            }));
+    }
+}
+
+#[inline(always)]
+fn build_attribute_component(
+    builder: &mut EntityBuilder,
+    components: &ComponentsData,
+    instance_id: i32,
+) {
+    if let Some(attribute_component) = &components.attribute_component {
+        if attribute_component.disabled.unwrap_or_default() {
+            return;
+        }
+        if let Some(property_id) = attribute_component.property_id {
+            let inst_data = wicked_waifus_data::instance_dungeon_data::iter()
+                .find(|d| d.id == instance_id)
+                .unwrap();
+
+            let mut level = inst_data.entity_level;
+            if level == 0 {
+                // TODO:
+                //  - iterate area_data
+                //  - find player.basic_info.area_id
+                //  - get player world level
+                //  - get area.world_monster_level_max
+                level = 90;
+            }
+            builder.with(ComponentContainer::Attribute(Attribute::from_data(
+                &get_monster_props_by_level(property_id, level),
+                attribute_component.hardness_mode_id,
+                attribute_component.rage_mode_id,
+            )));
+        }
+    }
+}
+
+#[inline(always)]
+fn build_ai_components(builder: &mut EntityBuilder, components: &ComponentsData) {
+    if let Some(ai_component) = &components.ai_component {
+        builder.with(ComponentContainer::MonsterAi(MonsterAi {
+            weapon_id: ai_component
+                .weapon_id
+                .as_deref()
+                .and_then(|id| id.parse().ok())
+                .unwrap_or(0),
+            hatred_group_id: 0,   // TODO:
+            ai_team_init_id: 100, // TODO:
+            combat_message_id: 0, // TODO:
+        }));
+        if let Some(ai_id) = ai_component.ai_id {
+            builder.with(ComponentContainer::Fsm(Fsm::from_ai_id(ai_id)));
+        }
     }
 }

@@ -10,6 +10,8 @@ use crate::logic::utils::load_role_info::attribute_from_data;
 
 pub struct Attribute {
     pub attr_map: HashMap<EAttributeType, (i32, i32)>,
+    pub hardness_mode_id: i32,
+    pub rage_mode_id: i32,
 }
 
 impl Component for Attribute {
@@ -40,9 +42,13 @@ impl Attribute {
     }
 
     #[inline(always)]
-    pub fn from_data(base_property: &BasePropertyData) -> Self {
+    pub fn from_data(base_property: &BasePropertyData,
+                     hardness_mode_id: Option<i32>,
+                     rage_mode_id: Option<i32>) -> Self {
         Self {
             attr_map: attribute_from_data(base_property),
+            hardness_mode_id: hardness_mode_id.unwrap_or_default(),
+            rage_mode_id: rage_mode_id.unwrap_or_default(),
         }
     }
 
@@ -58,8 +64,8 @@ impl Attribute {
                     value_increment: *incr,
                 })
                 .collect(),
-            hardness_mode_id: 0,
-            rage_mode_id: 0,
+            hardness_mode_id: self.hardness_mode_id,
+            rage_mode_id: self.rage_mode_id,
         }
     }
 }

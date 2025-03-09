@@ -1,6 +1,11 @@
 use std::collections::HashSet;
 
-use wicked_waifus_protocol::{ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, ErrorCode, FormationAttrRequest, FormationAttrResponse, RoleFavorListRequest, RoleFavorListResponse, RoleShowListUpdateRequest, RoleShowListUpdateResponse, UpdateFormationRequest, UpdateFormationResponse};
+use wicked_waifus_protocol::{
+    ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, ErrorCode,
+    FormationAttrRequest, FormationAttrResponse, PlayerMotionRequest, PlayerMotionResponse,
+    RoleFavorListRequest, RoleFavorListResponse, RoleShowListUpdateRequest,
+    RoleShowListUpdateResponse, UpdateFormationRequest, UpdateFormationResponse,
+};
 
 use crate::logic::player::Player;
 use crate::logic::role::{Role, RoleFormation};
@@ -98,7 +103,7 @@ pub fn on_update_formation_request(
 
             if !added_roles.is_empty() {
                 // add new roles
-                player.notify(player.build_player_entity_add_notify(added_roles, world));
+                player.notify(player.build_player_entity_add_notify(added_roles));
             }
 
             // send update group formation notify
@@ -135,4 +140,15 @@ pub fn on_update_formation_request(
     player.notify(player.build_update_formation_notify());
 
     response.error_code = ErrorCode::Success.into();
+}
+
+pub fn on_player_motion_request(
+    _: &Player,
+    request: PlayerMotionRequest,
+    response: &mut PlayerMotionResponse,
+) {
+    match wicked_waifus_data::motion_data::iter().find(|&motion| motion.id == request.motion) {
+        None => response.error_id = ErrorCode::UnKnownError.into(),
+        Some(_) => response.error_id = ErrorCode::Success.into(),
+    }
 }

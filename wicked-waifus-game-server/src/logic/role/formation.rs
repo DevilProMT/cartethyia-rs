@@ -7,7 +7,14 @@ pub struct RoleFormation {
     pub is_current: bool,
 }
 
+// Will be updated every version
+const DEFAULT_FORMATION: &[i32] = &[1203, 1502, 1607];
+
 impl RoleFormation {
+    pub fn default_roles() -> &'static [i32] {
+        DEFAULT_FORMATION
+    }
+
     pub fn load_from_save(data: RoleFormationData) -> Self {
         Self {
             id: data.formation_id,
@@ -23,6 +30,17 @@ impl RoleFormation {
             cur_role: self.cur_role,
             role_id_list: self.role_ids.iter().map(|&role_id| role_id).collect(),
             is_current: self.is_current,
+        }
+    }
+}
+
+impl Default for RoleFormation {
+    fn default() -> Self {
+        Self {
+            id: 1,
+            cur_role: DEFAULT_FORMATION[0],
+            role_ids: DEFAULT_FORMATION.to_vec(),
+            is_current: true,
         }
     }
 }
