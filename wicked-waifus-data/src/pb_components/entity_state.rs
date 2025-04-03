@@ -57,4 +57,5 @@ pub struct EntityStateComponent {
     pub cycle_states: Option<Vec<String>>,
     pub prefab_performance_type: Option<String>,
     pub lock_config: Option<LockConfig>,
+    pub instant_actions_on_state_change: Option<bool>,
 }

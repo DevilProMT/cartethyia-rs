@@ -51,4 +51,5 @@ dummy_handler! {
     EntityPatrolStop;
     Advice;
     PlayerTitleData;
+    LoadingConfig;
 }

@@ -19,7 +19,7 @@ load_textmaps = true
 quadrant_size = 1000000
 
 [asset_config]
-asset_url = "https://git.xeondev.com/wickedwaifus/wicked-waifus-data/releases/download/pioneer_2.2.3/bundle.zip"
+asset_url = "https://git.xeondev.com/wickedwaifus/wicked-waifus-data/releases/download/pioneer_2.3.1/bundle.zip"
 buffer_size = 268435456
 
 [default_unlocks]

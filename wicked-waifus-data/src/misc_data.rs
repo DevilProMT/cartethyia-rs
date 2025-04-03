@@ -189,7 +189,9 @@ pub enum EntityType {
     ReboundPlateGear,
     RefreshGroup,
     RenderSpecifiedRange,
+    RenderSpecifiedRange2,
     Resurrection,
+    RewardNpc,
     RollingFireball,
     Rotator,
     SceneAura,
@@ -219,6 +221,7 @@ pub enum EntityType {
     TeleControlGroup,
     Teleporter,
     TemporaryTeleporter,
+    TimedStrikeDevice,
     TimelineTrackController,
     TimeStop,
     Trample,
@@ -227,6 +230,7 @@ pub enum EntityType {
     TreasureBox,
     Trigger,
     TriggerConditionListener,
+    TuanziNpc,
     TurntableController,
     VacuumCleaner,
     VarManager,
@@ -242,6 +246,7 @@ pub enum EntityType {
     WaterCollection,
     WaterSpout,
     Weapon,
+    WindSource,
 }
 
 #[derive(Deserialize, PartialEq, Debug, Copy, Clone)]

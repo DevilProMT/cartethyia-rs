@@ -186,6 +186,7 @@ handle_request! {
     InputSettingUpdate;
     LanguageSettingUpdate;
     ServerPlayStationPlayOnlyState;
+    LoadingConfig;
 
     // Player (TODO: Review this on_..., port some from go)
     // ModifySignature;

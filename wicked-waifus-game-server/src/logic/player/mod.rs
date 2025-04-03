@@ -49,7 +49,7 @@ use crate::logic::player::player_tutorials::{PlayerTutorial, PlayerTutorials};
 use crate::logic::{
     components::{
         Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
-        Position, Visibility, VisionSkill,
+        Position, Visibility, VisionSkill, SoarWingSkin
     },
     ecs::component::ComponentContainer,
 };
@@ -412,7 +412,6 @@ impl Player {
                                 role_id,
                                 entity_id: world.get_entity_id(role_id),
                                 on_stage_without_control: false,
-                                // role_skin_id: role_skin.skin_id,
                             }
                         })
                         .collect(),

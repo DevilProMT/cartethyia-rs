@@ -54,7 +54,8 @@ pub enum VarType {
     Int,
     String,
     Float,
-    Prefab
+    Prefab,
+    Transform
 }
 
 #[derive(Deserialize, Debug, Clone)]

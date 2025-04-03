@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use wicked_waifus_protocol::{CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, ItemRewardNotify, Ls2, NormalItemUpdateNotify, RewardItemInfo};
+use wicked_waifus_protocol::{CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, ItemRewardNotify, NormalItemUpdateNotify, RewardItemInfo, WR};
 
 use wicked_waifus_data::pb_components::action::{Action, ChangeSelfEntityState, UnlockTeleportTrigger};
 use wicked_waifus_data::pb_components::entity_state::EntityStateComponent;
@@ -103,6 +103,7 @@ pub fn perform_action(player: &mut Player,
         Action::SetSportsState(action) => unimplemented_action! { action },
         Action::OpenSimpleGameplay(action) => unimplemented_action! { action },
         Action::PlayEffect(action) => unimplemented_action! { action },
+        Action::PlayEffect2(action) => unimplemented_action! { action },
         Action::RestorePlayerCameraAdjustment(action) => unimplemented_action! { action },
         Action::AdjustPlayerCamera(action) => unimplemented_action! { action },
         Action::SetPlayerPos(action) => unimplemented_action! { action },
@@ -183,6 +184,18 @@ pub fn perform_action(player: &mut Player,
         Action::ResetLevelPlay(action) => unimplemented_action! { action },
         Action::VehicleSprint(action) => unimplemented_action! { action },
         Action::VehicleMoveWithPathLine(action) => unimplemented_action! { action },
+        Action::ClientPreEnableSubLevels(action) => unimplemented_action! { action },
+        Action::GuestOperateUiAnimation(action) => unimplemented_action! { action },
+        Action::ChangeEntityCamp(action) => unimplemented_action! { action },
+        Action::NewMoveWithSpline(action) => unimplemented_action! { action },
+        Action::DangoAbyssActivatePortal(action) => unimplemented_action! { action },
+        Action::DangoAbyssCreateRewardTreasureBox(action) => unimplemented_action! { action },
+        Action::DangoAbyssGotoNextFloor(action) => unimplemented_action! { action },
+        Action::DangoAbyssReceiveReward(action) => unimplemented_action! { action },
+        Action::SummonEntity(action) => unimplemented_action! { action },
+        Action::GetRewardByInteract(action) => unimplemented_action! { action },
+        Action::OpenQte(action) => unimplemented_action! { action },
+        Action::ActiveAntiGravitySafePoint(action) => unimplemented_action! { action },
     }
 }
 
@@ -208,8 +221,8 @@ fn collect_action(player: &mut Player,
             );
             player.notify(NormalItemUpdateNotify { normal_item_list, no_tips: false });
             // UpdateHandBookActiveStateMapNotify
-            let mut rewards: HashMap<i32, Ls2> = HashMap::new();
-            rewards.insert(0, Ls2 {
+            let mut rewards: HashMap<i32, WR> = HashMap::new();
+            rewards.insert(0, WR {
                 item_list: drop.drop_preview.iter()
                     .map(|(&id, &quantity)| RewardItemInfo {
                         show_plan_id: 0, // TODO: Check how to get this

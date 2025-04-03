@@ -42,6 +42,8 @@ impl_component_container! {
     Interact;
     Concomitant;
     Summoner;
+    SoarWingSkin;
+    ParaglidingSkin;
 }
 
 pub trait Component {

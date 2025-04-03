@@ -78,7 +78,8 @@ fn get_bot_details() -> PlayerDetails {
         sdk_account_id: "Encore_PS5".to_string(),
         cross_play_enabled: true,
         limit_state: 0,
-        jtc: 0,
-        ztc2: 0,
+        player_title_id: 0,
+        cur_player_title_id: 0,
+        sex: 0,
     }
 }

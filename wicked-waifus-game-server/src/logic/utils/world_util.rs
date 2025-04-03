@@ -9,7 +9,7 @@ use wicked_waifus_data::{
     blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
 };
 
-use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, StateTag, Tag};
+use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Tag};
 use crate::logic::ecs::entity::EntityBuilder;
 use crate::logic::ecs::world::World;
 use crate::logic::math::Transform;
@@ -85,6 +85,9 @@ macro_rules! create_player_entity_pb {
                 }))
                 .with(ComponentContainer::RoleSkin(RoleSkin {
                     skin_id: role.skin_id,
+                }))
+                .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
+                    skin_id: 84000001,
                 }))
                 .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
@@ -177,6 +180,9 @@ pub fn add_player_entities(player: &Player) {
                 .with(ComponentContainer::RoleSkin(RoleSkin {
                     skin_id: role.skin_id,
                 }))
+                .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
+                    skin_id: 84000001,
+                }))
                 .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
 
@@ -262,7 +268,6 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
                             entity_id: id.into(),
                             role_id: conf.config_id,
                             on_stage_without_control: false,
-                            // role_skin_id: role_skin.skin_id,
                         })
                         .collect(),
                     ..Default::default()

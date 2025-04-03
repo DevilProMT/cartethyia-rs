@@ -8,7 +8,7 @@ pub struct RoleFormation {
 }
 
 // Will be updated every version
-const DEFAULT_FORMATION: &[i32] = &[1203, 1502, 1607];
+const DEFAULT_FORMATION: &[i32] = &[5101, 1407, 1507];
 
 impl RoleFormation {
     pub fn default_roles() -> &'static [i32] {

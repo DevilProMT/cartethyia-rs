@@ -193,6 +193,10 @@ pub enum LeisureInteractOption {
     Manipulate(LeisureInteractOptionManipulate),
     Glide,
     GetUp,
+    FailurePose,
+    GameplayPose1,
+    GameplayPose2,
+    GameplayPose3
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -457,12 +461,20 @@ pub struct TransitionOptionPlayMp4 {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct TransitionOptionCharacterDisplay {
+    // TODO:
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Type")]
 pub enum TransitionOption { // TODO: Extract
     CenterText(TransitionOptionCenterText),
     FadeInScreen(TransitionOptionFadeInScreen),
     Seamless(TransitionOptionSeamless),
     PlayMp4(TransitionOptionPlayMp4),
+    CharacterDisplay(TransitionOptionCharacterDisplay),
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1265,12 +1277,20 @@ pub struct MemoirsSystem {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct DangoCollect {
+    pub id: i32,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Type")]
 pub enum SystemOption {
     AchievementSystem(SystemOptionAchievementSystem),
     CookSystem(SystemOptionUnlockOption),
     AtlasSystem(SystemOptionUnlockOption),
     MemoirsSystem(MemoirsSystem),
+    DangoCollect(DangoCollect),
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1317,6 +1337,7 @@ pub enum Color {
     Yellow,
     Green,
     White,
+    Gray
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1437,6 +1458,15 @@ pub struct PlayEffectPos {
 pub struct PlayEffect {
     pub path: String,
     pub pos2: PlayEffectPos,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct PlayEffect2 {
+    pub r#type: String, // TODO: Convert to enum
+    pub path: String,
+    pub pos2: Option<PlayEffectPos>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -2132,6 +2162,102 @@ pub struct VehicleMoveWithPathLine {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct ClientPreEnableSubLevels {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct GuestOperateUiAnimation {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct ChangeEntityCamp {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct NewMoveWithSpline {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct DangoAbyssActivatePortal {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct DangoAbyssCreateRewardTreasureBox {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct DangoAbyssGotoNextFloor {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct DangoAbyssReceiveReward {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct SummonEntity {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct GetRewardByInteract {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct OpenQte {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct ActiveAntiGravitySafePoint {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Name")]
 pub enum Action {
     SetBattleState(ActionFields<SetBattleStateParams>),
@@ -2213,6 +2339,7 @@ pub enum Action {
     SetSportsState(ActionFields<SetSportsState>),
     OpenSimpleGameplay(ActionFields<OpenSimpleGameplay>),
     PlayEffect(ActionFields<PlayEffect>),
+    PlayEffect2(ActionFields<PlayEffect2>),
     RestorePlayerCameraAdjustment(ActionFields<RestorePlayerCameraAdjustment>),
     AdjustPlayerCamera(ActionFields<AdjustPlayerCamera>),
     SetPlayerPos(ActionFields<SetPlayerPos>),
@@ -2293,6 +2420,18 @@ pub enum Action {
     ResetLevelPlay(ActionFields<ResetLevelPlay>),
     VehicleSprint(ActionFields<VehicleSprint>),
     VehicleMoveWithPathLine(ActionFields<VehicleMoveWithPathLine>),
+    ClientPreEnableSubLevels(ActionFields<ClientPreEnableSubLevels>),
+    GuestOperateUiAnimation(ActionFields<GuestOperateUiAnimation>),
+    ChangeEntityCamp(ActionFields<ChangeEntityCamp>),
+    NewMoveWithSpline(ActionFields<NewMoveWithSpline>),
+    DangoAbyssActivatePortal(ActionFields<DangoAbyssActivatePortal>),
+    DangoAbyssCreateRewardTreasureBox(ActionFields<DangoAbyssCreateRewardTreasureBox>),
+    DangoAbyssGotoNextFloor(ActionFields<DangoAbyssGotoNextFloor>),
+    DangoAbyssReceiveReward(ActionFields<DangoAbyssReceiveReward>),
+    SummonEntity(ActionFields<SummonEntity>),
+    GetRewardByInteract(ActionFields<GetRewardByInteract>),
+    OpenQte(ActionFields<OpenQte>),
+    ActiveAntiGravitySafePoint(ActionFields<ActiveAntiGravitySafePoint>),
 }
 
 #[derive(Deserialize, Debug, Clone)]

@@ -54,7 +54,7 @@ pub fn on_access_path_time_server_config_request(
     response: &mut AccessPathTimeServerConfigResponse,
 ) {
     // TODO: port this from golang
-    response.access_path_time_server_config = vec![];
+    response.pb = vec![];
 }
 
 pub fn on_player_head_data_request(

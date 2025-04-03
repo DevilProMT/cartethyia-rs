@@ -56,7 +56,7 @@ impl Role {
     #[inline(always)]
     pub fn get_all_roles_except_mc() -> Vec<i32> {
         role_info_data::iter()
-            .filter(|role| role.role_type == 1 && !MAIN_CHARACTER_ARRAY.contains(&role.id))
+            .filter(|role| (role.role_type == 1 && !MAIN_CHARACTER_ARRAY.contains(&role.id)) || role.id == 5101)
             .map(|role| role.id)
             .collect()
     }

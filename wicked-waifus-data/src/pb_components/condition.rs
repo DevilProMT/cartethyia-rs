@@ -233,7 +233,6 @@ pub struct OnlinePlayerConditionTargetOptionTypeParticipator {
 #[serde(rename_all = "PascalCase")]
 pub struct OnlinePlayerConditionTargetOptionTypeHost {}
 
-
 #[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Type")]
 pub enum OnlinePlayerConditionTargetOption {
@@ -493,6 +492,21 @@ pub struct FinishDungeon {
 #[derive(Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase")]
+pub struct CheckDungeonFinish {
+    pub dungeon_id: i32,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckDungeonHasSaveConfig {
+    pub dungeon_id: i32,
+    pub is_has_save_config: bool,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
 pub struct CompareCalabashLevel {
     pub compare: CompareType,
     pub calabash_level: i32,
@@ -711,10 +725,20 @@ pub struct ReachArea {
 #[derive(Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase", deny_unknown_fields)]
+pub struct EntityDeadPosition {
+    pub entity_id: i64,
+    pub var: Var,
+    pub is_ignore_rot: Option<bool>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase", deny_unknown_fields)]
 pub struct Kill {
     pub exist_targets: Vec<i64>,
     pub targets_to_awake: Vec<i64>,
     pub prefab_var: Option<Var>,
+    pub entity_dead_positions: Option<Vec<EntityDeadPosition>>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1076,6 +1100,42 @@ pub struct CheckActivityState {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckSubLevelState {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckEntityGravityDirection {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckTeleControlState {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckEntityReward {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Type")]
 pub enum Condition {
     CompareTimePeriod(CompareTimePeriod),
@@ -1117,6 +1177,8 @@ pub enum Condition {
     EnterDungeon(EnterDungeon),
     LeaveDungeon(LeaveDungeon),
     FinishDungeon(FinishDungeon),
+    CheckDungeonFinish(CheckDungeonFinish),
+    CheckDungeonHasSaveConfig(CheckDungeonHasSaveConfig),
     CompareCalabashLevel(CompareCalabashLevel),
     CheckCalabashDevelopReward(CheckCalabashDevelopReward),
     CheckLordGymFinish(CheckLordGymFinish),
@@ -1171,6 +1233,10 @@ pub enum Condition {
     ReadMail(ReadMail),
     ReceiveTelecom(ReceiveTelecom),
     CheckActivityState(CheckActivityState),
+    CheckSubLevelState(CheckSubLevelState),
+    CheckEntityGravityDirection(CheckEntityGravityDirection),
+    CheckTeleControlState(CheckTeleControlState),
+    CheckEntityReward(CheckEntityReward),
 }
 
 #[derive(Deserialize, Debug, Clone)]
