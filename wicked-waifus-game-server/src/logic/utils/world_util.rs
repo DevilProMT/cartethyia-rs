@@ -111,27 +111,27 @@ macro_rules! create_player_entity_pb {
     }};
 }
 
-const CONCOM_ROLE_ID: &[(i32, i32)] = &[
-    (38, 1407),
-    (36, 1105),
-    (35, 1506),
-];
+// const CONCOM_ROLE_ID: &[(i32, i32)] = &[
+//     (38, 1407),
+//     (36, 1105),
+//     (35, 1506),
+// ];
 
-fn get_role_id_from_concom(key: i32) -> Option<i32> {
-    CONCOM_ROLE_ID.iter().find(|&&(k, _)| k == key).map(|&(_, v)| v)
-}
+// fn get_role_id_from_concom(key: i32) -> Option<i32> {
+//     CONCOM_ROLE_ID.iter().find(|&&(k, _)| k == key).map(|&(_, v)| v)
+// }
 
-fn extract_concom_number(s: String) -> Option<i32> {
-    let prefix = "Player0";
-    if !s.starts_with(prefix) {
-        return None;
-    }
+// fn extract_concom_number(s: String) -> Option<i32> {
+//     let prefix = "Player0";
+//     if !s.starts_with(prefix) {
+//         return None;
+//     }
 
-    let rest = &s[prefix.len()..]; // Skip "Player0"
-    let underscore_index = rest.find('_')?;
-    let number_str = &rest[..underscore_index];
-    number_str.parse::<i32>().ok()
-}
+//     let rest = &s[prefix.len()..]; // Skip "Player0"
+//     let underscore_index = rest.find('_')?;
+//     let number_str = &rest[..underscore_index];
+//     number_str.parse::<i32>().ok()
+// }
 
 pub fn add_player_entities(player: &Player) {
     let mut world_ref = player.world.borrow_mut();
@@ -152,8 +152,9 @@ pub fn add_player_entities(player: &Player) {
         for (_, blueprint_config) in wicked_waifus_data::blueprint_config_data::iter().filter(|(_, bc)| {
             bc.blueprint_type.starts_with("Player0") && bc.entity_type == EntityType::Monster
         }) {
-            let blueprint_role_id = get_role_id_from_concom(extract_concom_number(blueprint_config.blueprint_type.clone()).unwrap());
-            if blueprint_role_id.is_none() {continue}
+            // let blueprint_role_id = get_role_id_from_concom(extract_concom_number(blueprint_config.blueprint_type.clone()).unwrap());
+            // if blueprint_role_id.is_none() {continue}
+
             let (_, template_config) = wicked_waifus_data::template_config_data::iter().find(|(_, tc)| tc.blueprint_type == blueprint_config.blueprint_type).unwrap();
 
             tracing::debug!(
@@ -186,14 +187,12 @@ pub fn add_player_entities(player: &Player) {
                 .with(ComponentContainer::Autonomous(Autonomous { autonomous_id: player.basic_info.id }))
                 .with(ComponentContainer::Visibility(Visibility { is_visible: false, is_actor_visible: true }))
                 .with(ComponentContainer::Position(Position(player.location.position.clone())))
-                // .with(ComponentContainer::Attribute(Attribute { attr_map: template_config.components_data.attribute_component.unwrap(), hardness_mode_id: (), rage_mode_id: () }))
-                // .with(ComponentContainer::Fsm(Fsm { hash_code: (), common_hash_code: (), state_list: (), node_list: () }))
-                .build();
+                .with(ComponentContainer::Position(Position(player.location.position.clone())))
+            .build();
 
             tracing::debug!(
-                "created concom entity, id: {}, role_id: {}",
-                template_config.id,
-                blueprint_role_id.unwrap()
+                "created concom entity, id: {}",
+                template_config.id
             );
         }
         for role in role_vec {
