@@ -366,15 +366,15 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], extern
 
             let (_, summoner_cfg) = wicked_waifus_data::summon_cfg_data::iter().find(|(_, sc)| sc.blueprint_type == blueprint_config.blueprint_type).unwrap();
         
-            let entity: crate::logic::ecs::entity::Entity = world.create_entity(template_config.id, EEntityType::Monster.into(), player.basic_info.cur_map_id);
+            let concomitant= world.create_entity(template_config.id, EEntityType::Monster.into(), player.basic_info.cur_map_id);
 
-            let fight_buff_infos = world.generate_concom_buffs(summoner_cfg.born_buff_id.clone(), entity.entity_id as i64);
+            let fight_buff_infos = world.generate_concom_buffs(summoner_cfg.born_buff_id.clone(), concomitant.entity_id as i64);
             let buf_manager = FightBuff {
                 fight_buff_infos,
                 list_buff_effect_cd: vec![],
             };
             added_entities.push(world
-                .create_builder(entity)
+                .create_builder(concomitant)
                 .with(ComponentContainer::EntityConfig(EntityConfig { 
                     camp: 0,
                     config_id: template_config.id, 
@@ -382,14 +382,14 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], extern
                     entity_type: EEntityType::Monster.into(), 
                     entity_state: EntityState::Born 
                 }))
-                .with(ComponentContainer::Summoner(Summoner { summon_cfg_id: template_config.id, summon_skill_id: 1, summon_type: 2 }))
+                .with(ComponentContainer::Summoner(Summoner { summon_cfg_id: summoner_cfg.id, summon_skill_id: 1, summon_type: 2 }))
                 .with(ComponentContainer::FightBuff(buf_manager))
                 .with(ComponentContainer::Autonomous(Autonomous { autonomous_id: player.basic_info.id }))
                 .with(ComponentContainer::Visibility(Visibility { is_visible: false, is_actor_visible: true }))
                 .with(ComponentContainer::Position(Position(player.location.position.clone())))
                 .with(ComponentContainer::Concomitant(Concomitant {
                     vision_entity_id: 0,
-                    custom_entity_ids: vec![template_config.id as i64],
+                    custom_entity_ids: vec![concomitant.entity_id as i64],
                     phantom_role_id: 0,
                 }))
                 // .with(ComponentContainer::Attribute(Attribute { attr_map: template_config.components_data.attribute_component.unwrap(), hardness_mode_id: (), rage_mode_id: () }))
