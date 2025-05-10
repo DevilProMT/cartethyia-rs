@@ -167,6 +167,7 @@ json_hash_table_data! {
     DragonPool, id, i32;
     DropPackage, id, i32;
     TemplateConfig, blueprint_type, String;
+    SummonCfg, blueprint_type, String;
 }
 
 mod level_entity_config;

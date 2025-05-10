@@ -114,6 +114,11 @@ impl WorldEntity {
     pub fn generate_role_permanent_buffs(&mut self, entity_id: i64) -> Vec<FightBuffInformation> {
         self.buff_manager.create_permanent_buffs(entity_id)
     }
+
+    pub fn generate_concom_buffs(&mut self, buff_ids: Vec<i64>, entity_id: i64) -> Vec<FightBuffInformation> {
+        tracing::debug!("{:#?}", buff_ids);
+        self.buff_manager.create_concom_buffs(buff_ids, entity_id)
+    }
 }
 
 impl Default for WorldEntity {

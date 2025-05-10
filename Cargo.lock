@@ -2682,8 +2682,9 @@ checksum = "e70f2a8b45122e719eb623c01822704c4e0907e7e426a05927e1a1cfff5b75d0"
 [[package]]
 name = "unreal-niggery-rs"
 version = "0.1.0"
-source = "git+https://git.xeondev.com/xavo95/unreal-niggery-rs.git#07330a27e1e49f0544f5fde51698c0a2300cc737"
+source = "git+https://git.xeondev.com/ReversedRoomsMisc/unreal-niggery-rs.git#e07eda21e461e1ec234ec9ef2562dc8187742631"
 dependencies = [
+ "thiserror 2.0.12",
  "widestring",
 ]
 

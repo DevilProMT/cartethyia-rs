@@ -81,6 +81,31 @@ impl BufManager {
             })
             .collect::<Vec<_>>()
     }
+
+    pub fn create_concom_buffs(&mut self, buff_ids: Vec<i64>, origin_id: i64) -> Vec<FightBuffInformation> {
+        buff_ids
+            .iter()
+            .map(|&id| {
+                let mut buff = FightBuffInformation {
+                    handle_id: 0,
+                    buff_id: id,
+                    level: 1,
+                    stack_count: 1,
+                    instigator_id: origin_id,
+                    entity_id: origin_id,
+                    apply_type: 0,
+                    duration: -1f32,
+                    left_duration: -1f32,
+                    context: vec![],
+                    is_active: true,
+                    server_id: 0,
+                    message_id: 0,
+                };
+                self.create(&mut buff);
+                buff
+            })
+            .collect::<Vec<_>>()
+    }
 }
 
 impl Default for BufManager {

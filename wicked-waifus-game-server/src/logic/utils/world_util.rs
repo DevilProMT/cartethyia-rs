@@ -9,7 +9,7 @@ use wicked_waifus_data::{
     blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
 };
 
-use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Tag};
+use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Summoner, Tag};
 use crate::logic::ecs::entity::EntityBuilder;
 use crate::logic::ecs::world::World;
 use crate::logic::math::Transform;
@@ -123,7 +123,7 @@ pub fn add_player_entities(player: &Player) {
         .map(|role_id| player.role_list.get(&role_id).unwrap())
         .collect::<Vec<_>>();
     let cur_role_id = current_formation.cur_role;
-
+    
     if world.active_entity_empty() {
         for role in role_vec {
             let entity = world.create_entity(
@@ -319,12 +319,84 @@ pub fn remove_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
     }
 }
 
+const CONCOM_ROLE_ID: &[(i32, i32)] = &[
+    (38, 1407),
+    (36, 1105),
+    (35, 1506),
+];
+
+fn get_role_id_from_concom(key: i32) -> Option<i32> {
+    CONCOM_ROLE_ID.iter().find(|&&(k, _)| k == key).map(|&(_, v)| v)
+}
+
+fn extract_concom_number(s: String) -> Option<i32> {
+    let prefix = "Player0";
+    if !s.starts_with(prefix) {
+        return None;
+    }
+
+    let rest = &s[prefix.len()..]; // Skip "Player0"
+    let underscore_index = rest.find('_')?;
+    let number_str = &rest[..underscore_index];
+    number_str.parse::<i32>().ok()
+}
+
 pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], external_awake: bool) {
     let mut added_entities = Vec::with_capacity(entities.len());
     // Enclose to drop borrow mut ASAP
     {
         let mut world_ref = player.world.borrow_mut();
         let world = world_ref.get_mut_world_entity();
+
+        let current_formation = player.formation_list.get(&player.cur_formation_id).unwrap();
+
+        let cur_role_id = current_formation.cur_role;
+        for (_, blueprint_config) in wicked_waifus_data::blueprint_config_data::iter().filter(|(_, bc)| {
+            bc.blueprint_type.starts_with("Player0") && bc.entity_type == EntityType::Monster
+        }) {
+            let blueprint_role_id = get_role_id_from_concom(extract_concom_number(blueprint_config.blueprint_type.clone()).unwrap());
+            if blueprint_role_id.is_none() || current_formation.role_ids.contains(&blueprint_role_id.unwrap()) {continue}
+            let (_, template_config) = wicked_waifus_data::template_config_data::iter().find(|(_, tc)| tc.blueprint_type == blueprint_config.blueprint_type).unwrap();
+
+            tracing::debug!(
+                "getting summoner cfg, blueprint_type: {}, template_config_id: {}",
+                template_config.blueprint_type,
+                template_config.id
+            );
+
+            let (_, summoner_cfg) = wicked_waifus_data::summon_cfg_data::iter().find(|(_, sc)| sc.blueprint_type == blueprint_config.blueprint_type).unwrap();
+        
+            let entity: crate::logic::ecs::entity::Entity = world.create_entity(template_config.id, EEntityType::Monster.into(), player.basic_info.cur_map_id);
+
+            let fight_buff_infos = world.generate_concom_buffs(summoner_cfg.born_buff_id.clone(), entity.entity_id as i64);
+            let buf_manager = FightBuff {
+                fight_buff_infos,
+                list_buff_effect_cd: vec![],
+            };
+            added_entities.push(world
+                .create_builder(entity)
+                .with(ComponentContainer::EntityConfig(EntityConfig { 
+                    camp: 0,
+                    config_id: template_config.id, 
+                    config_type: EntityConfigType::Template, 
+                    entity_type: EEntityType::Monster.into(), 
+                    entity_state: EntityState::Born 
+                }))
+                .with(ComponentContainer::Summoner(Summoner { summon_cfg_id: template_config.id, summon_skill_id: 1, summon_type: 2 }))
+                .with(ComponentContainer::FightBuff(buf_manager))
+                .with(ComponentContainer::Autonomous(Autonomous { autonomous_id: player.basic_info.id }))
+                .with(ComponentContainer::Visibility(Visibility { is_visible: false, is_actor_visible: true }))
+                .with(ComponentContainer::Position(Position(player.location.position.clone())))
+                // .with(ComponentContainer::Attribute(Attribute { attr_map: template_config.components_data.attribute_component.unwrap(), hardness_mode_id: (), rage_mode_id: () }))
+                // .with(ComponentContainer::Fsm(Fsm { hash_code: (), common_hash_code: (), state_list: (), node_list: () }))
+                .build());
+
+            tracing::debug!(
+                "created concom entity, id: {}, role_id: {}",
+                template_config.id,
+                cur_role_id
+            );
+        }
 
         for entity in entities {
             // Skip hidden entities

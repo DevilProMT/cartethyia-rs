@@ -15,6 +15,7 @@ pub mod reward;
 pub mod teleport;
 pub mod timer;
 pub mod var;
+pub mod model;
 
 #[derive(Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
@@ -28,6 +29,7 @@ pub struct ComponentsData {
     pub interact_component: Option<interact::InteractComponent>,
     pub entity_state_component: Option<entity_state::EntityStateComponent>,
     pub reward_component: Option<reward::RewardComponent>,
+    pub model_component: Option<model::ModelComponent>,
     // TODO: Implement this ones
     #[cfg(feature = "strict_json_fields")]
     pub scene_actor_ref_component: Option<serde_json::Value>,
@@ -69,8 +71,6 @@ pub struct ComponentsData {
     pub guide_line_creator_component: Option<serde_json::Value>,
     #[cfg(feature = "strict_json_fields")]
     pub photo_target_component: Option<serde_json::Value>,
-    #[cfg(feature = "strict_json_fields")]
-    pub model_component: Option<serde_json::Value>,
     #[cfg(feature = "strict_json_fields")]
     pub entity_group_component: Option<serde_json::Value>,
     #[cfg(feature = "strict_json_fields")]
@@ -230,6 +230,7 @@ impl ComponentsData {
             interact_component: self.interact_component.as_ref().or(template.interact_component.as_ref()).cloned(),
             entity_state_component: self.entity_state_component.as_ref().or(template.entity_state_component.as_ref()).cloned(),
             reward_component: self.reward_component.as_ref().or(template.reward_component.as_ref()).cloned(),
+            model_component: self.model_component.as_ref().or(template.model_component.as_ref()).cloned(),
         }
     }
 }
