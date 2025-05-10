@@ -111,6 +111,28 @@ macro_rules! create_player_entity_pb {
     }};
 }
 
+const CONCOM_ROLE_ID: &[(i32, i32)] = &[
+    (38, 1407),
+    (36, 1105),
+    (35, 1506),
+];
+
+fn get_role_id_from_concom(key: i32) -> Option<i32> {
+    CONCOM_ROLE_ID.iter().find(|&&(k, _)| k == key).map(|&(_, v)| v)
+}
+
+fn extract_concom_number(s: String) -> Option<i32> {
+    let prefix = "Player0";
+    if !s.starts_with(prefix) {
+        return None;
+    }
+
+    let rest = &s[prefix.len()..]; // Skip "Player0"
+    let underscore_index = rest.find('_')?;
+    let number_str = &rest[..underscore_index];
+    number_str.parse::<i32>().ok()
+}
+
 pub fn add_player_entities(player: &Player) {
     let mut world_ref = player.world.borrow_mut();
     let world = world_ref.get_mut_world_entity();
@@ -125,11 +147,13 @@ pub fn add_player_entities(player: &Player) {
     let cur_role_id = current_formation.cur_role;
     
     if world.active_entity_empty() {
+        let mut concoms = vec![];
+
         for (_, blueprint_config) in wicked_waifus_data::blueprint_config_data::iter().filter(|(_, bc)| {
             bc.blueprint_type.starts_with("Player0") && bc.entity_type == EntityType::Monster
         }) {
             let blueprint_role_id = get_role_id_from_concom(extract_concom_number(blueprint_config.blueprint_type.clone()).unwrap());
-            if blueprint_role_id.is_none() || current_formation.role_ids.contains(&blueprint_role_id.unwrap()) {continue}
+            if blueprint_role_id.is_none() {continue}
             let (_, template_config) = wicked_waifus_data::template_config_data::iter().find(|(_, tc)| tc.blueprint_type == blueprint_config.blueprint_type).unwrap();
 
             tracing::debug!(
@@ -141,6 +165,7 @@ pub fn add_player_entities(player: &Player) {
             let (_, summoner_cfg) = wicked_waifus_data::summon_cfg_data::iter().find(|(_, sc)| sc.blueprint_type == blueprint_config.blueprint_type).unwrap();
         
             let concomitant= world.create_entity(template_config.id, EEntityType::Monster.into(), player.basic_info.cur_map_id);
+            concoms.push(concomitant.entity_id as i64);
 
             let fight_buff_infos = world.generate_concom_buffs(summoner_cfg.born_buff_id.clone(), concomitant.entity_id as i64);
             let buf_manager = FightBuff {
@@ -168,7 +193,7 @@ pub fn add_player_entities(player: &Player) {
             tracing::debug!(
                 "created concom entity, id: {}, role_id: {}",
                 template_config.id,
-                cur_role_id
+                blueprint_role_id.unwrap()
             );
         }
         for role in role_vec {
@@ -229,6 +254,7 @@ pub fn add_player_entities(player: &Player) {
                 .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
                     skin_id: 84000001,
                 }))
+                .with(ComponentContainer::Concomitant(Concomitant { vision_entity_id: 0, custom_entity_ids: concoms.clone(), phantom_role_id: 0 }))
                 .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
 
@@ -363,28 +389,6 @@ pub fn remove_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
             is_remove: true,
         });
     }
-}
-
-const CONCOM_ROLE_ID: &[(i32, i32)] = &[
-    (38, 1407),
-    (36, 1105),
-    (35, 1506),
-];
-
-fn get_role_id_from_concom(key: i32) -> Option<i32> {
-    CONCOM_ROLE_ID.iter().find(|&&(k, _)| k == key).map(|&(_, v)| v)
-}
-
-fn extract_concom_number(s: String) -> Option<i32> {
-    let prefix = "Player0";
-    if !s.starts_with(prefix) {
-        return None;
-    }
-
-    let rest = &s[prefix.len()..]; // Skip "Player0"
-    let underscore_index = rest.find('_')?;
-    let number_str = &rest[..underscore_index];
-    number_str.parse::<i32>().ok()
 }
 
 pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], external_awake: bool) {
