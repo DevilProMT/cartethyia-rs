@@ -9,7 +9,7 @@ use wicked_waifus_data::{
     blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
 };
 
-use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Summoner, Tag};
+use crate::logic::components::{Autonomous, Concomitant, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Summoner, Tag};
 use crate::logic::ecs::entity::EntityBuilder;
 use crate::logic::ecs::world::World;
 use crate::logic::math::Transform;
@@ -387,6 +387,11 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], extern
                 .with(ComponentContainer::Autonomous(Autonomous { autonomous_id: player.basic_info.id }))
                 .with(ComponentContainer::Visibility(Visibility { is_visible: false, is_actor_visible: true }))
                 .with(ComponentContainer::Position(Position(player.location.position.clone())))
+                .with(ComponentContainer::Concomitant(Concomitant {
+                    vision_entity_id: 0,
+                    custom_entity_ids: vec![template_config.id as i64],
+                    phantom_role_id: 0,
+                }))
                 // .with(ComponentContainer::Attribute(Attribute { attr_map: template_config.components_data.attribute_component.unwrap(), hardness_mode_id: (), rage_mode_id: () }))
                 // .with(ComponentContainer::Fsm(Fsm { hash_code: (), common_hash_code: (), state_list: (), node_list: () }))
                 .build());
