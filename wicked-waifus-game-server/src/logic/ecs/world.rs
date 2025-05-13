@@ -7,6 +7,7 @@ use std::collections::hash_map::{Keys, Values};
 use std::collections::HashMap;
 use wicked_waifus_protocol::FightBuffInformation;
 
+#[derive(Default)]
 pub struct WorldEntity {
     components: HashMap<i32, Vec<RefCell<ComponentContainer>>>,
     entity_manager: EntityManager,
@@ -111,22 +112,7 @@ impl WorldEntity {
         self.entity_manager.active_entity_empty()
     }
 
-    pub fn generate_role_permanent_buffs(&mut self, entity_id: i64) -> Vec<FightBuffInformation> {
-        self.buff_manager.create_permanent_buffs(entity_id)
-    }
-
-    pub fn generate_concom_buffs(&mut self, buff_ids: Vec<i64>, entity_id: i64) -> Vec<FightBuffInformation> {
-        tracing::debug!("{:#?}", buff_ids);
-        self.buff_manager.create_concom_buffs(buff_ids, entity_id)
-    }
-}
-
-impl Default for WorldEntity {
-    fn default() -> Self {
-        Self {
-            components: HashMap::new(),
-            entity_manager: EntityManager::default(),
-            buff_manager: BufManager::default(),
-        }
+    pub fn generate_role_permanent_buffs(&mut self, entity_id: i32, role_id: i32) -> Vec<FightBuffInformation> {
+        self.buff_manager.create_permanent_buffs(entity_id as i64, role_id)
     }
 }

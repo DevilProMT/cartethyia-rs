@@ -8,17 +8,34 @@ pub struct BufManager {
     recycled_handles: HashMap<i32, VecDeque<i32>>,
 }
 
-impl BufManager {
-    const PERMANENT_ROLE_BUFFS: &'static [i64] = &[
-        3003,      // Remove wall run prohibition
-        3004,      // Remove gliding prohibition
-        1213,      // Reduce stamina while flying
-        1214,      // Reduce stamina while flying in sprint
-        1215,      // Reduce stamina while flying up in sprint
-        1216,      // Reduce stamina while flying down in sprint
-        640012051, // Allow flying -> tag: 1151923109
-    ];
+const OVERRIDE_BUFFS: &[i64] = &[
+    3003,       // Remove wall run prohibition
+    3004,       // Remove gliding prohibition
+    1213,       // Reduce stamina while flying
+    1214,       // Reduce stamina while flying in sprint
+    1215,       // Reduce stamina while flying up in sprint
+    1216,       // Reduce stamina while flying down in sprint
+    640012051,  // Allow flying -> tag: 1151923109
+];
 
+const ROLE_OVERRIDES: &[(i32, &[i64])] = &[
+    (1407, &[
+        // ciaconna's forte buffs are completely fucked to get from an algorithm and i hate kuro!
+        1407900003,
+        1407500040,
+    ]),
+];
+
+fn get_role_buff_overrides(role_id: i32) -> Option<&'static [i64]> {
+    for &(role, buff) in ROLE_OVERRIDES {
+        if role == role_id {
+            return Some(buff);
+        }
+    }
+    None
+}
+
+impl BufManager {
     pub fn create(&mut self, buf: &mut FightBuffInformation) {
         let handle = self
             .recycled_handles
@@ -35,7 +52,9 @@ impl BufManager {
 
     #[inline(always)]
     pub fn remove_entity_buffs(&mut self, entity_id: i64) {
-        let handles = self.active_buf_set.iter()
+        let handles = self
+            .active_buf_set
+            .iter()
             .filter(|(_, buff)| buff.entity_id == entity_id)
             .map(|(&handle, _)| handle)
             .collect::<Vec<_>>();
@@ -57,38 +76,33 @@ impl BufManager {
         }
     }
 
-    pub fn create_permanent_buffs(&mut self, origin_id: i64) -> Vec<FightBuffInformation> {
-        Self::PERMANENT_ROLE_BUFFS
-            .iter()
-            .map(|&id| {
-                let mut buff = FightBuffInformation {
-                    handle_id: 0,
-                    buff_id: id,
-                    level: 1,
-                    stack_count: 1,
-                    instigator_id: origin_id,
-                    entity_id: origin_id,
-                    apply_type: 0,
-                    duration: -1f32,
-                    left_duration: -1f32,
-                    context: vec![],
-                    is_active: true,
-                    server_id: 0,
-                    message_id: 0,
-                };
-                self.create(&mut buff);
-                buff
-            })
-            .collect::<Vec<_>>()
-    }
+    pub fn create_permanent_buffs(&mut self, origin_id: i64, role_id: i32) -> Vec<FightBuffInformation> {
+        let mut buffs = wicked_waifus_data::buff_data::iter().filter(|(id, buf)| {
+            id.to_string().starts_with(&role_id.to_string()) // must be part of char kit :)
+            && 
+            (
+                !id.to_string().contains("666")// KURO IS EVIL
+                && 
+                buf.duration_policy == 1
+            )
+            // && 
+            // !buf.ge_desc.contains("【废弃】") // remove "deprecated" buffs
+        })
+        .map(|x| *x.0)
+        .collect::<Vec<i64>>();
 
-    pub fn create_concom_buffs(&mut self, buff_ids: Vec<i64>, origin_id: i64) -> Vec<FightBuffInformation> {
-        buff_ids
+        buffs.extend(OVERRIDE_BUFFS.iter().copied());
+        if let Some(role_buff_overrides) = get_role_buff_overrides(role_id) {
+            buffs.extend(role_buff_overrides.iter().copied());
+        }
+        buffs.dedup();
+        
+        buffs
             .iter()
-            .map(|&id| {
+            .map(|id| {
                 let mut buff = FightBuffInformation {
                     handle_id: 0,
-                    buff_id: id,
+                    buff_id: *id,
                     level: 1,
                     stack_count: 1,
                     instigator_id: origin_id,

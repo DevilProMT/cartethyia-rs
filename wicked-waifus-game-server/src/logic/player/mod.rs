@@ -263,7 +263,7 @@ impl Player {
             }
 
             if !rf.role_ids.contains(&rf.cur_role) {
-                rf.cur_role = *rf.role_ids.iter().nth(0).unwrap();
+                rf.cur_role = *rf.role_ids.first().unwrap();
             }
         }
     }
@@ -304,9 +304,7 @@ impl Player {
     pub fn build_role_favor_list_notify(&self) -> RoleFavorListNotify {
         RoleFavorListNotify {
             favor_list: self
-                .role_list
-                .iter()
-                .map(|(_, role)| RoleFavor {
+                .role_list.values().map(|role| RoleFavor {
                     role_id: role.role_id,
                     level: role.favor_level,
                     exp: role.favor_exp,
@@ -341,9 +339,7 @@ impl Player {
     pub fn build_motion_list_notify(&self) -> RoleMotionListNotify {
         RoleMotionListNotify {
             motion_list: self
-                .role_list
-                .iter()
-                .map(|(_, role)| {
+                .role_list.values().map(|role| {
                     RoleMotion {
                         role_id: role.role_id,
                         motion_ids: motion_data::iter()
@@ -362,14 +358,15 @@ impl Player {
         }
     }
 
-    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>) -> EntityAddNotify {
+    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>, world: &mut WorldEntity) -> EntityAddNotify {
         create_player_entity_pb!(
             role_list,
             self.basic_info.cur_map_id,
             self,
             self.basic_info.id,
             self.location.position.clone(),
-            self.explore_tools
+            self.explore_tools,
+            world
         )
     }
 
@@ -449,13 +446,13 @@ impl Player {
                                     tracing::warn!("Role {} not found in use role list", role_id);
                                     return Default::default();
                                 }
-                                let role = *role_map.get(&role_id).unwrap();
+                                let role = *role_map.get(role_id).unwrap();
                                 FormationRoleInfo {
                                     role_id: role.role_id,
                                     max_hp: 0,
                                     cur_hp: 0,
                                     level: role.level,
-                                    role_skin_id: role.skin_id,
+                                    ..Default::default()
                                 }
                             })
                             .collect(),
@@ -607,9 +604,7 @@ impl Player {
             basic_data: Some(self.basic_info.build_save_data()),
             role_data: Some(PlayerRoleData {
                 role_list: self
-                    .role_list
-                    .iter()
-                    .map(|(_, role)| role.build_save_data())
+                    .role_list.values().map(|role| role.build_save_data())
                     .collect(),
                 role_formation_list: self
                     .formation_list
@@ -642,9 +637,7 @@ impl Player {
         // TODO: There is a bug we are investigating with several resonators, this is a workaround
         PbGetRoleListNotify {
             role_list: self
-                .role_list
-                .iter()
-                .map(|(_, role)| role.to_protobuf())
+                .role_list.values().map(|role| role.to_protobuf())
                 .collect(),
         }
     }

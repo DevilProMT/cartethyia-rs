@@ -1,58 +1,60 @@
+use wicked_waifus_protocol::summon::ESummonType;
 use wicked_waifus_protocol::{
-    EEntityType, ERemoveEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo,
-    EntityRemoveNotify, EntityState, FightRoleInfo, FightRoleInfos, LivingStatus, SceneInformation,
-    SceneMode, ScenePlayerInformation, SceneTimeInfo,
+    EEntityType, ERemoveEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState, FightBuffInformation, FightRoleInfo, FightRoleInfos, LivingStatus, SceneInformation, SceneMode, ScenePlayerInformation, SceneTimeInfo
 };
 
 use wicked_waifus_data::pb_components::ComponentsData;
 use wicked_waifus_data::{
-    blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
+    base_property_data, blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData
 };
 
-use crate::logic::components::{Autonomous, Concomitant, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Summoner, Tag};
-use crate::logic::ecs::entity::EntityBuilder;
-use crate::logic::ecs::world::World;
+use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Tag};
+use crate::logic::ecs::entity::{Entity, EntityBuilder};
+use crate::logic::ecs::world::{World, WorldEntity};
 use crate::logic::math::Transform;
 use crate::logic::player::Player;
-use crate::logic::utils::{entity_serializer, tag_utils};
 use crate::logic::utils::growth_utils::get_monster_props_by_level;
+use crate::logic::utils::{entity_serializer, tag_utils};
 use crate::logic::{
     components::{
-        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
-        Position, RoleSkin, Visibility, VisionSkill,
+        Attribute, Concomitant, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer,
+        PlayerOwnedEntityMarker, Position, RoleSkin, Summoner, Visibility, VisionSkill,
     },
     ecs::component::ComponentContainer,
 };
+//use crate::resonator_data::{ResonatorData, Concomitant, SummonerComponent};
+
 use crate::query_with;
 
 #[macro_export]
 macro_rules! create_player_entity_pb {
-    ($role_list:expr, $cur_map_id:expr, $player:expr, $player_id:expr, $position:expr, $explore_tools:expr) => {{
-        let mut world_ref = $player.world.borrow_mut();
-        let world = world_ref.get_mut_world_entity();
-
-        let current_formation = $player.formation_list.get(&$player.cur_formation_id).unwrap();
+    ($role_list:expr, $cur_map_id:expr, $player:expr, $player_id:expr, $position:expr, $explore_tools:expr, $world:expr) => {{
+        let current_formation = $player
+            .formation_list
+            .get(&$player.cur_formation_id)
+            .unwrap();
         let cur_role_id = current_formation.cur_role;
 
         let mut pbs = Vec::new();
 
         for role in $role_list {
-            let entity = world.create_entity(
-                role.role_id,
-                EEntityType::Player.into(),
-                $cur_map_id,
-            );
-            // Once per character buffs are implemented, add a mut on role_buffs
-            let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id as i64);
-            let buf_manager = FightBuff {
+            let role_id: i32 = role.role_id;
+            let entity =
+                $world.create_entity(role.role_id, EEntityType::Player.into(), $cur_map_id);
+            let fight_buff_infos = $world.generate_role_permanent_buffs(entity.entity_id, role_id);
+
+            let buffs = FightBuff {
                 fight_buff_infos,
-                list_buff_effect_cd: vec![],
+                ..Default::default()
             };
 
-            let entity = world.create_builder(entity)
-                .with(ComponentContainer::PlayerOwnedEntityMarker(PlayerOwnedEntityMarker {
-                    entity_type: EEntityType::Player,
-                }))
+            let entity = $world
+                .create_builder(entity)
+                .with(ComponentContainer::PlayerOwnedEntityMarker(
+                    PlayerOwnedEntityMarker {
+                        entity_type: EEntityType::Player,
+                    },
+                ))
                 .with(ComponentContainer::EntityConfig(EntityConfig {
                     camp: 0,
                     config_id: role.role_id,
@@ -62,23 +64,19 @@ macro_rules! create_player_entity_pb {
                 }))
                 .with(ComponentContainer::OwnerPlayer(OwnerPlayer($player_id)))
                 .with(ComponentContainer::Position(Position($position)))
-                .with(ComponentContainer::Visibility(Visibility{
+                .with(ComponentContainer::Visibility(Visibility {
                     is_visible: role.role_id == cur_role_id,
                     is_actor_visible: true,
                 }))
-                // TODO: Check if role has hardness or rage_mode
-                // TODO: Support AddProp from Equipment(Echo, weapon, buffs??), weapon base state goes to base_prop too.
-                .with(ComponentContainer::Attribute(
-                     Attribute::from_data(
-                         &role.get_base_properties(),
-                         None,
-                         None,
-                     )
-                ))
+                .with(ComponentContainer::Attribute(Attribute::from_data(
+                    &role.get_base_properties(),
+                    None,
+                    None,
+                )))
                 .with(ComponentContainer::Movement(Movement::default()))
                 .with(ComponentContainer::Equip(Equip {
                     weapon_id: role.equip_weapon,
-                    weapon_breach_level: 90, // TODO: store this too
+                    weapon_breach_level: 90,
                 }))
                 .with(ComponentContainer::VisionSkill(VisionSkill {
                     skill_id: $explore_tools.active_explore_skill,
@@ -89,7 +87,7 @@ macro_rules! create_player_entity_pb {
                 .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
                     skin_id: 84000001,
                 }))
-                .with(ComponentContainer::FightBuff(buf_manager))
+                .with(ComponentContainer::FightBuff(buffs))
                 .build();
 
             let mut pb = EntityPb {
@@ -97,7 +95,7 @@ macro_rules! create_player_entity_pb {
                 ..Default::default()
             };
 
-            world
+            $world
                 .get_entity_components(entity.entity_id)
                 .into_iter()
                 .for_each(|comp| comp.set_pb_data(&mut pb));
@@ -111,27 +109,84 @@ macro_rules! create_player_entity_pb {
     }};
 }
 
-// const CONCOM_ROLE_ID: &[(i32, i32)] = &[
-//     (38, 1407),
-//     (36, 1105),
-//     (35, 1506),
-// ];
+fn summon_concomitant(player: &Player, world: &mut WorldEntity, summon_cfg: &wicked_waifus_data::SummonCfgData) -> Entity {
+    let mut concomitant_buffs: Vec<FightBuffInformation> = Vec::new();
 
-// fn get_role_id_from_concom(key: i32) -> Option<i32> {
-//     CONCOM_ROLE_ID.iter().find(|&&(k, _)| k == key).map(|&(_, v)| v)
-// }
+    for buff_id in &summon_cfg.born_buff_id {
+        concomitant_buffs
+            .push(FightBuffInformation {
+                handle_id: 1,
+                buff_id: *buff_id,
+                level: 1,
+                stack_count: 1,
+                instigator_id: 0,
+                entity_id: 0,
+                apply_type: 0,
+                duration: -1.0,
+                left_duration: -1.0,
+                context: vec![],
+                is_active: true,
+                server_id: 1,
+                message_id: 1,
+            }
+        );
+    }
 
-// fn extract_concom_number(s: String) -> Option<i32> {
-//     let prefix = "Player0";
-//     if !s.starts_with(prefix) {
-//         return None;
-//     }
+    let concomitant_id = template_config_data::get(&summon_cfg.blueprint_type).unwrap().id;
+    tracing::info!("Adding Concomitant with id: {}", concomitant_id);
+    let con_buffs = concomitant_buffs.clone();
 
-//     let rest = &s[prefix.len()..]; // Skip "Player0"
-//     let underscore_index = rest.find('_')?;
-//     let number_str = &rest[..underscore_index];
-//     number_str.parse::<i32>().ok()
-// }
+    let con_entity = world.create_entity(
+        concomitant_id,
+        EEntityType::Monster.into(),
+        player.basic_info.cur_map_id,
+    );
+
+    world
+        .create_builder(con_entity)
+        .with(ComponentContainer::PlayerOwnedEntityMarker(PlayerOwnedEntityMarker {
+            entity_type: EEntityType::Monster,
+        }))
+        .with(ComponentContainer::EntityConfig(EntityConfig {
+            camp: 0,
+            config_id: concomitant_id,
+            config_type: EntityConfigType::Template,
+            entity_type: EEntityType::Monster,
+            entity_state: EntityState::Sleep,
+        }))
+        .with(ComponentContainer::OwnerPlayer(OwnerPlayer(
+            player.basic_info.id,
+        )))
+        .with(ComponentContainer::Position(Position(
+            player.location.position.clone(),
+        )))
+        .with(ComponentContainer::Visibility(Visibility {
+            is_visible: false,
+            is_actor_visible: false,
+        }))
+        .with(ComponentContainer::Attribute(Attribute::from_data(
+            base_property_data::iter()
+                .find(|d| d.id == concomitant_id as i32)
+                .unwrap_or_else(|| {
+                    base_property_data::iter()
+                        .find(|d| d.id == 390070051)
+                        .unwrap_or_else(|| {
+                            tracing::error!("Default base property concomitant not found!");
+                            panic!("Critical config missing: base property concomitant")
+                        })
+                }),
+            None,
+            None,
+        )))
+        .with(ComponentContainer::Movement(Movement::default()))
+        .with(ComponentContainer::FightBuff(FightBuff { fight_buff_infos: con_buffs, ..Default::default() }))
+        .with(ComponentContainer::Summoner(Summoner {
+            summon_cfg_id: summon_cfg.id,
+            summon_skill_id: 0,
+            summon_type: ESummonType::ESummonTypeConcomitantCustom.into()
+        }))
+        .build()
+}
 
 pub fn add_player_entities(player: &Player) {
     let mut world_ref = player.world.borrow_mut();
@@ -142,70 +197,32 @@ pub fn add_player_entities(player: &Player) {
     let role_vec = current_formation
         .role_ids
         .iter()
-        .map(|role_id| player.role_list.get(&role_id).unwrap())
+        .map(|role_id| player.role_list.get(role_id).unwrap())
         .collect::<Vec<_>>();
     let cur_role_id = current_formation.cur_role;
-    
+
     if world.active_entity_empty() {
-        let mut concoms = vec![];
-
-        for (_, blueprint_config) in wicked_waifus_data::blueprint_config_data::iter().filter(|(_, bc)| {
-            bc.blueprint_type.starts_with("Player0") && bc.entity_type == EntityType::Monster
-        }) {
-            // let blueprint_role_id = get_role_id_from_concom(extract_concom_number(blueprint_config.blueprint_type.clone()).unwrap());
-            // if blueprint_role_id.is_none() {continue}
-
-            let (_, template_config) = wicked_waifus_data::template_config_data::iter().find(|(_, tc)| tc.blueprint_type == blueprint_config.blueprint_type).unwrap();
-
-            tracing::debug!(
-                "getting summoner cfg, blueprint_type: {}, template_config_id: {}",
-                template_config.blueprint_type,
-                template_config.id
-            );
-
-            let (_, summoner_cfg) = wicked_waifus_data::summon_cfg_data::iter().find(|(_, sc)| sc.blueprint_type == blueprint_config.blueprint_type).unwrap();
-        
-            let concomitant= world.create_entity(template_config.id, EEntityType::Monster.into(), player.basic_info.cur_map_id);
-            concoms.push(concomitant.entity_id as i64);
-
-            let fight_buff_infos = world.generate_concom_buffs(summoner_cfg.born_buff_id.clone(), concomitant.entity_id as i64);
-            let buf_manager = FightBuff {
-                fight_buff_infos,
-                list_buff_effect_cd: vec![],
-            };
-            world
-                .create_builder(concomitant)
-                .with(ComponentContainer::EntityConfig(EntityConfig { 
-                    camp: 0,
-                    config_id: template_config.id, 
-                    config_type: EntityConfigType::Template, 
-                    entity_type: EEntityType::Monster.into(), 
-                    entity_state: EntityState::Born 
-                }))
-                .with(ComponentContainer::Summoner(Summoner { summon_cfg_id: summoner_cfg.id, summon_skill_id: 1, summon_type: 2 }))
-                .with(ComponentContainer::FightBuff(buf_manager))
-                .with(ComponentContainer::Autonomous(Autonomous { autonomous_id: player.basic_info.id }))
-                .with(ComponentContainer::Visibility(Visibility { is_visible: false, is_actor_visible: true }))
-                .with(ComponentContainer::Position(Position(player.location.position.clone())))
-                .with(ComponentContainer::Position(Position(player.location.position.clone())))
-            .build();
-
-            tracing::debug!(
-                "created concom entity, id: {}",
-                template_config.id
-            );
-        }
         for role in role_vec {
+            let mut concomitants: Vec<i64> = vec![];
+
+            for (_, summon_cfg) in wicked_waifus_data::summon_cfg_data::iter().filter(|(_, cfg)| {
+                cfg.blueprint_type.starts_with("Player0") && cfg.born_buff_id.iter().any(|x| {
+                    x.to_string().starts_with(&role.role_id.to_string())
+                })
+            }) {
+                let concomitant = summon_concomitant(player, world, summon_cfg);
+                concomitants.push(concomitant.entity_id.into());
+            }
+
             let entity = world.create_entity(
                 role.role_id,
                 EEntityType::Player.into(),
                 player.basic_info.cur_map_id,
             );
-            // Once per character buffs are implemented, add a mut on role_buffs
-            let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id as i64);
+            let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id, role.role_id);
             let buf_manager = FightBuff {
                 fight_buff_infos,
-                list_buff_effect_cd: vec![],
+                list_buff_effect_cd: vec![]
             };
             let entity = world
                 .create_builder(entity)
@@ -218,7 +235,7 @@ pub fn add_player_entities(player: &Player) {
                     camp: 0,
                     config_id: role.role_id,
                     config_type: EntityConfigType::Character,
-                    entity_type: EEntityType::Player.into(),
+                    entity_type: EEntityType::Player,
                     entity_state: EntityState::Default,
                 }))
                 .with(ComponentContainer::OwnerPlayer(OwnerPlayer(
@@ -253,8 +270,12 @@ pub fn add_player_entities(player: &Player) {
                 .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
                     skin_id: 84000001,
                 }))
-                .with(ComponentContainer::Concomitant(Concomitant { vision_entity_id: 0, custom_entity_ids: concoms.clone(), phantom_role_id: 0 }))
                 .with(ComponentContainer::FightBuff(buf_manager))
+                .with(ComponentContainer::Concomitant(Concomitant {
+                    vision_entity_id: 0,
+                    custom_entity_ids: concomitants,
+                    phantom_role_id: 0,
+                }))
                 .build();
 
             tracing::debug!(
@@ -335,7 +356,7 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
                     cur_role: cur_role_id,
                     // is_retain: true,
                     fight_role_infos: active_characters
-                        .map(|(id, _, _, conf, role_skin)| FightRoleInfo {
+                        .map(|(id, _, _, conf, _role_skin)| FightRoleInfo {
                             entity_id: id.into(),
                             role_id: conf.config_id,
                             on_stage_without_control: false,
@@ -501,7 +522,13 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], extern
 
             build_autonomous_component(&mut builder, player.basic_info.id, entity_logic);
             build_interact_component(&mut builder, &components);
-            build_tags_components(&mut builder, &components, player, blueprint_config.unwrap().entity_type, config_id as i64);
+            build_tags_components(
+                &mut builder,
+                &components,
+                player,
+                blueprint_config.unwrap().entity_type,
+                config_id as i64,
+            );
             build_attribute_component(&mut builder, &components, player.location.instance_id);
             build_ai_components(&mut builder, &components);
             added_entities.push(builder.build());
@@ -567,7 +594,10 @@ fn build_tags_components(
     if let Some(entity_state_component) = &components.entity_state_component {
         let state = match entity_type {
             EntityType::Teleporter | EntityType::TemporaryTeleporter => {
-                let result = player.teleports.teleports_data.iter()
+                let result = player
+                    .teleports
+                    .teleports_data
+                    .iter()
                     .find(|teleporter| teleporter.entity_config_id == config_id);
                 match result.is_some() {
                     true => tag_utils::get_tag_id_by_name("关卡.Common.状态.激活"),

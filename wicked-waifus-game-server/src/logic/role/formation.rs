@@ -8,7 +8,7 @@ pub struct RoleFormation {
 }
 
 // Will be updated every version
-const DEFAULT_FORMATION: &[i32] = &[1506, 1407, 1507];
+const DEFAULT_FORMATION: &[i32] = &[1506, 1407, 1507];//5101, 1407, 1507]; // 5022 MChibi 5023 FChibi //5023, 5025, 5026 //1607
 
 impl RoleFormation {
     pub fn default_roles() -> &'static [i32] {
@@ -28,7 +28,7 @@ impl RoleFormation {
         RoleFormationData {
             formation_id: self.id,
             cur_role: self.cur_role,
-            role_id_list: self.role_ids.iter().map(|&role_id| role_id).collect(),
+            role_id_list: self.role_ids.to_vec(),
             is_current: self.is_current,
         }
     }

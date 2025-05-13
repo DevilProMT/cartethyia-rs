@@ -168,8 +168,8 @@ json_hash_table_data! {
     DropPackage, id, i32;
     TemplateConfig, blueprint_type, String;
     SummonCfg, blueprint_type, String;
+    Buff, id, i64;
 }
-
 mod level_entity_config;
 
 pub mod level_entity_config_data {
@@ -184,7 +184,10 @@ pub mod level_entity_config_data {
     }
 
     pub fn get(map_id: i32, entity_id: i64) -> Option<&'static Data> {
-        TABLE.get().unwrap().get(&create_key_internal(map_id, entity_id))
+        TABLE
+            .get()
+            .unwrap()
+            .get(&create_key_internal(map_id, entity_id))
     }
 
     #[inline(always)]
@@ -207,10 +210,9 @@ fn load_json_entity_level_config_data(base_path: &str) -> Result<(), LoadDataErr
         serde_json::from_reader::<BufReader<File>, Vec<level_entity_config_data::Data>>(reader)?
             .into_iter()
             .map(|element| (level_entity_config_data::create_key(&element), element))
-            .collect::<std::collections::HashMap<_, _>>()
+            .collect::<std::collections::HashMap<_, _>>(),
     );
     tracing::info!("Loading data finished: {path}");
-
 
     Ok(())
 }

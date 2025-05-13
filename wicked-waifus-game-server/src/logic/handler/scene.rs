@@ -1,6 +1,7 @@
 use wicked_waifus_protocol::{ErrorCode, SceneLoadingFinishRequest, SceneLoadingFinishResponse, SceneTraceRequest, SceneTraceResponse, UpdateSceneDateRequest, UpdateSceneDateResponse, AccessPathTimeServerConfigRequest, AccessPathTimeServerConfigResponse, PlayerHeadDataRequest, PlayerHeadDataResponse, UnlockRoleSkinListRequest, UnlockRoleSkinListResponse, JsPatchNotify};
 
-const WATER_MASK: &str = include_str!("../../../scripts/watermask-disable.js");
+//const WATER_MASK: &str = include_str!("../../../scripts/watermask-disable.js");
+const WATER_MASK: &str = include_str!("../../../scripts/watermask-edit.js");
 const UID_FIX: &str = include_str!("../../../scripts/uidfix.js");
 const CENSORSHIP_FIX: &str = include_str!("../../../scripts/censorshipfix.js");
 const DEBUG_DISABLE: &str = include_str!("../../../scripts/debug_disable.js");
