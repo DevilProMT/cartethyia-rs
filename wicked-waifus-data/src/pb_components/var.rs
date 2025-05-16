@@ -91,6 +91,13 @@ pub struct SelfVar {
     pub name: String,
 }
 
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct System {
+    pub r#type: VarType,
+    // TODO: Add Var substruct
+}
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Source")]
@@ -100,4 +107,5 @@ pub enum Var {
     Global(Global),
     #[serde(rename = "Self")]
     SelfVar(SelfVar),
+    System(System),
 }

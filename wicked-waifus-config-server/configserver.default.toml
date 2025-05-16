@@ -11,5 +11,5 @@ serve_dir_path = "data/assets/config-server"
 
 [asset_config]
 repository_url = "https://git.xeondev.com/wickedwaifus/wicked-waifus-config-server-files.git"
-reference = "8f109f2724"
+reference = "f088e91db3"
 discard_local_changes = true

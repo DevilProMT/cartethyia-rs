@@ -335,6 +335,7 @@ pub struct UsingVehicle {
 pub enum VehicleType {
     FishingBoat,
     Gongduola,
+    SceneItemAutoMoveVehicle,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -759,12 +760,20 @@ pub struct AddFlowInteractOption {
 
 #[derive(Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct MonsterMergedHpBarSettings {
+    pub display_buff_ids: Vec<i64>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase", deny_unknown_fields)]
 pub struct MonsterCreator {
     pub monster_creator_entity_ids: Vec<i64>,
     pub prefab_var: Option<Var>,
     pub show_monster_merged_hp_bar: Option<bool>,
     pub tid_monster_group_name: Option<String>,
+    pub monster_merged_hp_bar_settings: Option<MonsterMergedHpBarSettings>,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1136,6 +1145,60 @@ pub struct CheckEntityReward {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckIsGramophonePlayingMusic {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckBVBEvent {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct FinishBvbChallenge {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CompareActorVarElement {
+    // TODO: ActorRef > PathName(String)
+    // pub var1: Var,
+    // pub compare: CompareType,
+    // pub var2: Var,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CompareActorVar {
+    pub conditions: Vec<CompareActorVarElement>,
+    pub count: i32,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct CheckDangoCultivationProgress {
+    // TODO:
+    #[cfg(feature = "strict_json_fields")]
+    pub UiType: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Type")]
 pub enum Condition {
     CompareTimePeriod(CompareTimePeriod),
@@ -1237,6 +1300,11 @@ pub enum Condition {
     CheckEntityGravityDirection(CheckEntityGravityDirection),
     CheckTeleControlState(CheckTeleControlState),
     CheckEntityReward(CheckEntityReward),
+    CheckIsGramophonePlayingMusic(CheckIsGramophonePlayingMusic),
+    CheckBVBEvent(CheckBVBEvent),
+    FinishBvbChallenge(FinishBvbChallenge),
+    CompareActorVar(CompareActorVar),
+    CheckDangoCultivationProgress(CheckDangoCultivationProgress),
 }
 
 #[derive(Deserialize, Debug, Clone)]

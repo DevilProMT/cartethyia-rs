@@ -9,6 +9,7 @@ use crate::{config::NetworkSettings, session::Session, session::SessionManager};
 pub struct UdpServer {
     socket: Arc<UdpSocket>,
     protokey_helper: &'static ServerProtoKeyHelper,
+    kcp_use_crc: bool,
     session_mgr: &'static SessionManager,
     db: Arc<PgPool>,
 }
@@ -21,6 +22,7 @@ impl UdpServer {
     pub async fn new(
         network_settings: &'static NetworkSettings,
         protokey_helper: &'static ServerProtoKeyHelper,
+        kcp_use_crc: bool,
         session_mgr: &'static SessionManager,
         db: Arc<PgPool>,
     ) -> Result<Self, tokio::io::Error> {
@@ -29,6 +31,7 @@ impl UdpServer {
         Ok(Self {
             socket: Arc::new(socket),
             protokey_helper,
+            kcp_use_crc,
             session_mgr,
             db,
         })
@@ -65,6 +68,7 @@ impl UdpServer {
             addr,
             self.socket.clone(),
             self.protokey_helper,
+            self.kcp_use_crc,
             self.db.clone(),
         );
         self.session_mgr.add(conv_id, session);
@@ -72,6 +76,11 @@ impl UdpServer {
         let mut ack = Vec::with_capacity(5);
         ack.push(Self::CMD_ACK);
         ack.extend(conv_id.to_le_bytes());
+        #[cfg(feature = "ack-cmd-conv-crc-mtu")]
+        {
+            ack.extend((self.kcp_use_crc as u32).to_le_bytes());
+            ack.extend(Self::MTU.to_le_bytes());
+        }
         let _ = self.socket.send_to(&ack, addr).await;
 
         tracing::debug!("new connection from {addr}, conv_id: {conv_id}");

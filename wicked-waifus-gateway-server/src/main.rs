@@ -38,6 +38,7 @@ async fn main() -> Result<()> {
     let server = UdpServer::new(
         &CONFIG.network,
         PROTOKEY_HELPER.get_or_init(|| protokey_helper),
+        CONFIG.network.kcp_crc.unwrap_or(false),
         &SESSION_MGR,
         Arc::new(database),
     )

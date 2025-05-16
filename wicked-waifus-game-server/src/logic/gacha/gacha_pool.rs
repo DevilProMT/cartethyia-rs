@@ -2,12 +2,10 @@ use rand::prelude::IndexedRandom;
 use rand::Rng;
 use wicked_waifus_protocol::{ErrorCode, GachaResult, GachaReward};
 
-use wicked_waifus_data::GachaViewTypeInfoId::{BeginnersChoiceConvene,
-                                              FeaturedResonatorConvene,
-                                              FeaturedWeaponConvene,
-                                              NoviceConvene,
-                                              StandardResonatorConvene,
-                                              StandardWeaponConvene,
+use wicked_waifus_data::GachaViewTypeInfoId::{
+    BeginnersChoiceConvene, FeaturedResonatorConvene, FeaturedWeaponConvene,
+    MultipleChoiceResonatorConvene, MultipleChoiceWeaponConvene, NoviceConvene,
+    StandardResonatorConvene, StandardWeaponConvene,
 };
 
 use crate::logic::gacha::pool_info::PoolInfo;
@@ -53,16 +51,23 @@ impl GachaPool {
         }
     }
 
-    pub fn pull<T: Rng>(&mut self,
-                        rng: &mut T,
-                        player: &mut Player) -> Result<GachaResult, ErrorCode> {
+    pub fn pull<T: Rng>(
+        &mut self,
+        rng: &mut T,
+        player: &mut Player,
+    ) -> Result<GachaResult, ErrorCode> {
         self.check_limits()?;
 
         let result = if (self.info.pool_type == BeginnersChoiceConvene)
-            && (self.info.pool_id > 50) && (self.info.pool_id < 60) {
+            && (self.info.pool_id > 50)
+            && (self.info.pool_id < 60)
+        {
             let item_id = self.info.guaranteed_character_id.unwrap();
             GachaResult {
-                gacha_reward: Some(GachaReward { item_id, item_count: 1 }),
+                gacha_reward: Some(GachaReward {
+                    item_id,
+                    item_count: 1,
+                }),
                 extra_rewards: self.calculate_extra_rewards(2),
                 transform_rewards: Self::get_transform_rewards(player, item_id),
                 bottom: None,
@@ -84,13 +89,14 @@ impl GachaPool {
                     };
                     item_id
                 }
-                _ => {
-                    self.get_random_item(rarity, rng)
-                }
+                _ => self.get_random_item(rarity, rng),
             };
             self.update_pity(rarity);
             GachaResult {
-                gacha_reward: Some(GachaReward { item_id, item_count: 1 }),
+                gacha_reward: Some(GachaReward {
+                    item_id,
+                    item_count: 1,
+                }),
                 extra_rewards: self.calculate_extra_rewards(rarity),
                 transform_rewards: Self::get_transform_rewards(player, item_id),
                 bottom: None,
@@ -123,15 +129,29 @@ impl GachaPool {
 
     fn get_random_item(&self, rarity: usize, rng: &mut impl Rng) -> i32 {
         let items: &[i32] = match rarity {
-            0 => &[21010013, 21020013, 21030013, 21040013, 21050013, 21010023, 21020023, 21030023, 21040023, 21050023, 21010043, 21020043, 21030043, 21040043, 21050043],
+            0 => &[
+                21010013, 21020013, 21030013, 21040013, 21050013, 21010023, 21020023, 21030023,
+                21040023, 21050023, 21010043, 21020043, 21030043, 21040043, 21050043,
+            ],
             1 => match self.info.pool_type {
-                StandardWeaponConvene => &[21010024, 21020024, 21030024, 21040024, 21050024, 21010044, 21020044, 21030044, 21040044, 21050044, 21010064, 21020064, 21030064, 21040064, 21050064],
-                FeaturedResonatorConvene | FeaturedWeaponConvene => &self.info.rate_up_four_star[..],
+                StandardWeaponConvene => &[
+                    21010024, 21020024, 21030024, 21040024, 21050024, 21010044, 21020044, 21030044,
+                    21040044, 21050044, 21010064, 21020064, 21030064, 21040064, 21050064,
+                ],
+                FeaturedResonatorConvene | FeaturedWeaponConvene => {
+                    &self.info.rate_up_four_star[..]
+                }
                 _ => &[1303, 1602, 1102, 1204, 1403, 1103, 1402, 1202, 1601],
             },
             2 => match self.info.pool_type {
                 NoviceConvene | StandardResonatorConvene => &[1405, 1301, 1503, 1104, 1203],
-                FeaturedResonatorConvene | FeaturedWeaponConvene | StandardWeaponConvene | BeginnersChoiceConvene => &self.info.rate_up_five_star[..],
+                // TODO: Review MultipleChoiceConvene
+                FeaturedResonatorConvene
+                | FeaturedWeaponConvene
+                | StandardWeaponConvene
+                | BeginnersChoiceConvene
+                | MultipleChoiceResonatorConvene
+                | MultipleChoiceWeaponConvene => &self.info.rate_up_five_star[..],
             },
             _ => unreachable!(),
         };
@@ -154,15 +174,23 @@ impl GachaPool {
     }
 
     fn calculate_probabilities(&self) -> [f32; 3] {
-        let mut prob = [self.rates.three_star, self.rates.four_star, self.rates.five_star];
+        let mut prob = [
+            self.rates.three_star,
+            self.rates.four_star,
+            self.rates.five_star,
+        ];
 
         if self.pull_count >= self.info.pity_system.soft_pity_start {
-            let extra_prob = 0.8 + 8.0 * (self.pull_count - self.info.pity_system.soft_pity_start - 1) as f32;
+            let extra_prob =
+                0.8 + 8.0 * (self.pull_count - self.info.pity_system.soft_pity_start - 1) as f32;
             prob[0] -= extra_prob;
             prob[2] = extra_prob;
         }
 
-        match (self.pity_four + 1 >= self.info.pity_system.hard_pity_four, self.pull_count + 1 >= self.info.pity_system.hard_pity_five) {
+        match (
+            self.pity_four + 1 >= self.info.pity_system.hard_pity_four,
+            self.pull_count + 1 >= self.info.pity_system.hard_pity_five,
+        ) {
             (true, _) => [0.0, 100.0, 0.0],
             (_, true) => [0.0, 0.0, 100.0],
             _ => prob,
@@ -172,9 +200,9 @@ impl GachaPool {
     fn determine_rarity(&self, prob: &[f32; 3], rng: &mut impl Rng) -> usize {
         let roll: f32 = rng.random_range(0.0..100.0);
         match (roll < prob[2], roll < prob[2] + prob[1]) {
-            (true, _) => 2,  // 5-star
-            (_, true) => 1,  // 4-star
-            _ => 0,          // 3-star
+            (true, _) => 2, // 5-star
+            (_, true) => 1, // 4-star
+            _ => 0,         // 3-star
         }
     }
 
@@ -206,18 +234,18 @@ impl GachaPool {
         }
 
         /*
-TODO: update rewards for duplicates
+        TODO: update rewards for duplicates
 
-4-star duplicate:
-    1st to 6th duplicate: 3 afterglow corals and 1 waveband of that char
-    7th duplicate onwards: 8 afterglow corals
-    will not receive any afterglow corals when you pull a 4-star that you do not already own for the first time.
+        4-star duplicate:
+            1st to 6th duplicate: 3 afterglow corals and 1 waveband of that char
+            7th duplicate onwards: 8 afterglow corals
+            will not receive any afterglow corals when you pull a 4-star that you do not already own for the first time.
 
-5-star duplicate:
-    1st to 6th duplicate: 15 afterglow corals and 1 waveband of that char
-    7th duplicate onwards: 40 afterglow corals
-    will not receive any afterglow corals when you pull a 5-star that you do not already own for the first time.
- */
+        5-star duplicate:
+            1st to 6th duplicate: 15 afterglow corals and 1 waveband of that char
+            7th duplicate onwards: 40 afterglow corals
+            will not receive any afterglow corals when you pull a 5-star that you do not already own for the first time.
+         */
         match rarity {
             2 => rewards.push(GachaReward {
                 item_id: 50004, // afterglow corals

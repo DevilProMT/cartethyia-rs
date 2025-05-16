@@ -17,6 +17,7 @@ pub struct ServerConfig {
 #[derive(Deserialize)]
 pub struct NetworkSettings {
     pub kcp_port: u16,
+    pub kcp_crc: Option<bool>
 }
 
 impl TomlConfig for ServerConfig {
