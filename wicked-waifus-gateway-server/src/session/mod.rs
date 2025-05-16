@@ -41,6 +41,7 @@ impl Session {
         addr: SocketAddr,
         socket: Arc<UdpSocket>,
         helper: &'static ServerProtoKeyHelper,
+        use_crc: bool,
         database: Arc<PgPool>,
     ) -> Self {
         let output = SessionOutput {
@@ -51,7 +52,7 @@ impl Session {
         let cur_time_ms = time_util::unix_timestamp_ms();
         Self {
             protokey_helper: helper,
-            kcp: Kcp::new(conv_id, true, output),
+            kcp: Kcp::new(conv_id, 0, use_crc, 0, true, output),
             decoder: LengthFieldBasedDecoder::new(),
             start_time_ms: cur_time_ms,
             last_heartbeat_time_ms: cur_time_ms,

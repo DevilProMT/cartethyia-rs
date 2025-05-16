@@ -196,7 +196,8 @@ pub enum LeisureInteractOption {
     FailurePose,
     GameplayPose1,
     GameplayPose2,
-    GameplayPose3
+    GameplayPose3,
+    FaithJump
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -507,6 +508,11 @@ pub struct CameraLookAt {
     pub ban_input: Option<bool>,
     pub camera_pos: Option<Point>,
 }
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StopCameraLookAt {}
 
 #[derive(Deserialize, Debug, Clone)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
@@ -2258,6 +2264,94 @@ pub struct ActiveAntiGravitySafePoint {
 }
 
 #[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct BvbPlayDialog {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct BvbSendSystemEvent {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct BvbSendAiEvent {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct BvbPlayerOperationConstraint {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct ExecClientBattleAction {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct TriggerSpecificScanEffect {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct SetActorVar {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct RunActorCustomEvent {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StopUiScreenEffect {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct StopNewMoveWithSpline {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
+pub struct RequestSystemFunction {
+    #[cfg(feature = "strict_json_fields")]
+    pub config: serde_json::Value,
+}
+
+#[derive(Deserialize, Debug, Clone)]
 #[serde(tag = "Name")]
 pub enum Action {
     SetBattleState(ActionFields<SetBattleStateParams>),
@@ -2279,6 +2373,7 @@ pub enum Action {
     TeleportDungeon(ActionFields<TeleportDungeon>),
     DestroySelf(ActionFields<DestroySelf>),
     CameraLookAt(ActionFields<CameraLookAt>),
+    StopCameraLookAt(ActionFields<StopCameraLookAt>),
     EnterOrbitalCamera(ActionFields<EnterOrbitalCamera>),
     ExitOrbitalCamera(ActionFields<ExitOrbitalCamera>),
     SendAiEvent(ActionFields<SendAiEvent>),
@@ -2432,6 +2527,17 @@ pub enum Action {
     GetRewardByInteract(ActionFields<GetRewardByInteract>),
     OpenQte(ActionFields<OpenQte>),
     ActiveAntiGravitySafePoint(ActionFields<ActiveAntiGravitySafePoint>),
+    BvbPlayDialog(ActionFields<BvbPlayDialog>),
+    BvbSendSystemEvent(ActionFields<BvbSendSystemEvent>),
+    BvbSendAiEvent(ActionFields<BvbSendAiEvent>),
+    BvbPlayerOperationConstraint(ActionFields<BvbPlayerOperationConstraint>),
+    ExecClientBattleAction(ActionFields<ExecClientBattleAction>),
+    TriggerSpecificScanEffect(ActionFields<TriggerSpecificScanEffect>),
+    SetActorVar(ActionFields<SetActorVar>),
+    RunActorCustomEvent(ActionFields<RunActorCustomEvent>),
+    StopUiScreenEffect(ActionFields<StopUiScreenEffect>),
+    StopNewMoveWithSpline(ActionFields<StopNewMoveWithSpline>),
+    RequestSystemFunction(ActionFields<RequestSystemFunction>),
 }
 
 #[derive(Deserialize, Debug, Clone)]

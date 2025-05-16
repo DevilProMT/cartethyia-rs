@@ -73,5 +73,7 @@ pub fn on_unlock_role_skin_list_request(
     response: &mut UnlockRoleSkinListResponse,
 ) {
     // TODO: port this from golang
-    response.phantom_skin_list = vec![];
+    response.role_skin_list = wicked_waifus_data::role_skin_data::iter()
+        .map(|data| data.id)
+        .collect::<Vec<_>>();
 }

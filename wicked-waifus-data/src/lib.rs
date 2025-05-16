@@ -149,6 +149,7 @@ json_data! {
     RoleInfo;
     RoleLevelConsume;
     RolePropertyGrowth;
+    RoleSkin;
     SilentAreaDetection;
     SynthesisFormula;
     Teleporter;

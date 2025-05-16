@@ -44,6 +44,7 @@ dummy_handler! {
     TowerSeasonUpdate;
     ValidTimeItem;
     PayShopInfo;
+    PayInfo;
     InitRange;
     Activity;
     BattlePass;

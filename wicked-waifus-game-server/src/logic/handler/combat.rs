@@ -3,7 +3,12 @@ use wicked_waifus_protocol::combat_message::{
     combat_send_data, CombatNotifyData, CombatReceiveData, CombatRequestData, CombatResponseData,
     CombatSendPackRequest, CombatSendPackResponse,
 };
-use wicked_waifus_protocol::{AttributeChangedNotify, CombatCommon, DamageExecuteRequest, DamageExecuteResponse, EAttributeType, ERemoveEntityType, EntityRemoveNotify, ErrorCode, GameplayAttributeData, SwitchRoleRequest, SwitchRoleResponse};
+use wicked_waifus_protocol::{
+    AttributeChangedNotify, CombatCommon, DErrorResult, DamageExecuteRequest,
+    DamageExecuteResponse, EAttributeType, ERemoveEntityType, ErrorCode,
+    FsmConditionPassRequest, FsmConditionPassResponse, GameplayAttributeData,
+    PlayerBattleStateChangeNotify, SwitchRoleRequest, SwitchRoleResponse,
+};
 
 use wicked_waifus_data::damage_data;
 
@@ -54,6 +59,9 @@ pub fn on_combat_message_combat_send_pack_request(
                 match request_message {
                     combat_request_data::Message::SwitchRoleRequest(ref request) => {
                         handle_switch_role_request(player, request_data, request, response);
+                    }
+                    combat_request_data::Message::FsmConditionPassRequest(ref request) => {
+                        handle_fsm_condition_request(player, request_data, request, response);
                     }
                     combat_request_data::Message::DamageExecuteRequest(ref request) => {
                         handle_damage_execute_request(player, request_data, request, response);
@@ -117,16 +125,20 @@ fn handle_damage_execute_request(
                 .unwrap();
             if let Ok(related_attribute) = EAttributeType::try_from(damage_data.related_property) {
                 if let Some((value, _)) = attribute.attr_map.get(&related_attribute) {
-                    if let Some(&rate_lv) = damage_data.rate_lv.iter().find(|&lvl| *lvl == request.skill_level) {
+                    if let Some(&rate_lv) = damage_data
+                        .rate_lv
+                        .iter()
+                        .find(|&lvl| *lvl == request.skill_level)
+                    {
                         let hardness_lv = damage_data.hardness_lv[0];
                         tracing::info!(
-                        "atk: {}, damage_id: {}, role_id: {}, rate_lv: {}, hardness_lv: {}",
-                        value,
-                        request.damage_id,
-                        config_id,
-                        rate_lv,
-                        hardness_lv
-                    );
+                            "atk: {}, damage_id: {}, role_id: {}, rate_lv: {}, hardness_lv: {}",
+                            value,
+                            request.damage_id,
+                            config_id,
+                            rate_lv,
+                            hardness_lv
+                        );
                         damage = if hardness_lv == 0 || rate_lv <= 0 {
                             1
                         } else {
@@ -173,9 +185,58 @@ fn handle_damage_execute_request(
             }),
         ));
         if updated_value == 0 {
-            world_util::remove_entity(player, request.target_entity_id, ERemoveEntityType::HpIsZero);
+            world_util::remove_entity(
+                player,
+                request.target_entity_id,
+                ERemoveEntityType::HpIsZero,
+            );
         }
     }
 
     response.error_code = ErrorCode::Success.into();
+}
+
+fn handle_battle(
+    player: &mut Player,
+    combat_request: &CombatRequestData,
+    response: &mut CombatSendPackResponse,
+    condition: bool,
+) {
+    let receive_pack = response
+        .receive_pack_notify
+        .get_or_insert_with(Default::default);
+
+    receive_pack.data.push(create_combat_notify(
+        combat_request.combat_common.unwrap(),
+        combat_notify_data::Message::PlayerBattleStateChangeNotify(PlayerBattleStateChangeNotify {
+            player_id: player.basic_info.id,
+
+            in_battle: condition,
+        }),
+    ));
+}
+
+fn handle_fsm_condition_request(
+    player: &mut Player,
+    combat_request: &CombatRequestData,
+    request: &FsmConditionPassRequest,
+    response: &mut CombatSendPackResponse,
+) {
+    let receive_pack = response
+        .receive_pack_notify
+        .get_or_insert_with(Default::default);
+
+    receive_pack.data.push(create_combat_response(
+        combat_request,
+        combat_response_data::Message::FsmConditionPassResponse(FsmConditionPassResponse {
+            fsm_id: request.fsm_id,
+
+            error: Some(DErrorResult {
+                error_code: ErrorCode::Success.into(),
+
+                error_params: Vec::new(),
+            }),
+        }),
+    ));
+    handle_battle(player, combat_request, response, true);
 }

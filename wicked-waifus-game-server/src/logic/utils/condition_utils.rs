@@ -119,6 +119,11 @@ pub fn check_condition(player: &Player,
         Condition::CheckEntityGravityDirection(condition) => unimplemented_condition! { condition },
         Condition::CheckTeleControlState(condition) => unimplemented_condition! { condition },
         Condition::CheckEntityReward(condition) => unimplemented_condition! { condition },
+        Condition::CheckIsGramophonePlayingMusic(condition) => unimplemented_condition! { condition },
+        Condition::CheckBVBEvent(condition) => unimplemented_condition! { condition },
+        Condition::FinishBvbChallenge(condition) => unimplemented_condition! { condition },
+        Condition::CompareActorVar(condition) => unimplemented_condition! { condition },
+        Condition::CheckDangoCultivationProgress(condition) => unimplemented_condition! { condition },
     }
 }
 

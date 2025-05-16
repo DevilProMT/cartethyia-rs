@@ -216,6 +216,7 @@ handle_request! {
     PayShopInfo;
     // PayShopUpdate;
     // MonthCard;
+    PayInfo;
 
     // Skill (TODO: Review this on_..., port some from go)
     VisionExploreSkillSet;

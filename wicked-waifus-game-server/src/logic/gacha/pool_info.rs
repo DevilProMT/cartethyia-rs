@@ -1,12 +1,10 @@
 use std::time::SystemTime;
 
 use wicked_waifus_data::GachaViewTypeInfoId;
-use wicked_waifus_data::GachaViewTypeInfoId::{BeginnersChoiceConvene,
-                                            FeaturedResonatorConvene,
-                                            FeaturedWeaponConvene,
-                                            NoviceConvene,
-                                            StandardResonatorConvene,
-                                            StandardWeaponConvene,
+use wicked_waifus_data::GachaViewTypeInfoId::{
+    BeginnersChoiceConvene, FeaturedResonatorConvene, FeaturedWeaponConvene,
+    MultipleChoiceResonatorConvene, MultipleChoiceWeaponConvene, NoviceConvene,
+    StandardResonatorConvene, StandardWeaponConvene,
 };
 
 use crate::logic::gacha::category::PoolCategory;
@@ -58,30 +56,37 @@ impl PoolInfo {
     const NOVICE_GACHA_POOL_RESOURCE: &'static str = "UiItem_NewPlayerGachaPool";
     const BASE_GACHA_POOL_RESOURCE: &'static str = "UiItem_BaseGachaPool";
 
-    pub(crate) fn new(pool_id: i32,
-                      pool_type: GachaViewTypeInfoId,
-                      category: PoolCategory,
-                      rate_up_five_star: &[i32],
-                      rate_up_four_star: &[i32],
-                      guaranteed_character_id: Option<i32>) -> Self {
+    pub(crate) fn new(
+        pool_id: i32,
+        pool_type: GachaViewTypeInfoId,
+        category: PoolCategory,
+        rate_up_five_star: &[i32],
+        rate_up_four_star: &[i32],
+        guaranteed_character_id: Option<i32>,
+    ) -> Self {
         let start_time = SystemTime::now();
         let end_time = match category {
             PoolCategory::Permanent => None,
-            PoolCategory::Event(duration) | PoolCategory::Special(duration) => Some(start_time + duration),
+            PoolCategory::Event(duration) | PoolCategory::Special(duration) => {
+                Some(start_time + duration)
+            }
         };
 
         // TODO: Make objects const 50001, 50002, 50005, 50006 or check if gacha consumes exist
         let (item_id, daily_limit, total_limit, pity_system) = match pool_type {
             NoviceConvene => (50001, 0, 50, PitySystem::novice()),
-            StandardResonatorConvene | StandardWeaponConvene => (50001, 0, 80, PitySystem::default()),
-            FeaturedResonatorConvene => (50002, 0, 0, PitySystem::default()),
-            FeaturedWeaponConvene => (50005, 0, 0, PitySystem::default()),
-            BeginnersChoiceConvene => {
-                match pool_id {
-                    51..56 => (50006, 0, 1, PitySystem::default()),
-                    _ => (50001, 0, 80, PitySystem::default()),
-                }
+            StandardResonatorConvene | StandardWeaponConvene => {
+                (50001, 0, 80, PitySystem::default())
             }
+            // TODO: Review MultipleChoiceConvene
+            FeaturedResonatorConvene
+            | MultipleChoiceResonatorConvene
+            | MultipleChoiceWeaponConvene => (50002, 0, 0, PitySystem::default()),
+            FeaturedWeaponConvene => (50005, 0, 0, PitySystem::default()),
+            BeginnersChoiceConvene => match pool_id {
+                51..56 => (50006, 0, 1, PitySystem::default()),
+                _ => (50001, 0, 80, PitySystem::default()),
+            },
         };
 
         Self {

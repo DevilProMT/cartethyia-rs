@@ -220,6 +220,15 @@ pub struct NodeDataDetailAction {
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase")]
+pub struct NodeDataDetailActionWithResult {
+    #[serde(flatten)]
+    pub common: NodeDataDetailCommon,
+    pub action: Action,
+}
+
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
+#[serde(rename_all = "PascalCase")]
 pub struct NodeDataDetailQuestSucceed {
     #[serde(flatten)]
     pub common: NodeDataDetailCommon,
@@ -258,6 +267,7 @@ pub enum NodeDataDetail {
     Repeater(NodeDataDetailRepeater),
     Condition(NodeDataDetailCondition),
     Action(NodeDataDetailAction),
+    ActionWithResult(NodeDataDetailActionWithResult),
     QuestSucceed(NodeDataDetailQuestSucceed),
     QuestFailed(NodeDataDetailQuestFailed),
     AlwaysFalse(NodeDataDetailAlways),

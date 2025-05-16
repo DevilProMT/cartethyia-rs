@@ -2,6 +2,7 @@ service_id = 1
 
 [network]
 kcp_port = 7777
+kcp_crc = false
 
 [protokey]
 builtin_encryption_msg_id = [111, 112]

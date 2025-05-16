@@ -4,14 +4,19 @@ edition = "2021"
 version.workspace = true
 
 [features]
+# If supporting clients < 2.0 please use "--no-default-features"
+#   (additonally you could add "-F ack-cmd-conv" but it's currently a NO-OP)
+default = ["ack-cmd-conv"]
 debug-msg = []
+ack-cmd-conv = []
+ack-cmd-conv-crc-mtu = []
 
 [dependencies]
 # Framework
 tokio.workspace = true
 
 # Networking
-kcp = { workspace = true, features = ["tokio"] }
+kcp = { git = "https://git.xeondev.com/ReversedRoomsMisc/kcp-rs.git", features = ["wuthering-waves-old", "tokio"] }
 
 # Serialization
 serde.workspace = true
