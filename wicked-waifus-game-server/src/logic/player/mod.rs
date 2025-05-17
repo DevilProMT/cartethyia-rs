@@ -403,7 +403,7 @@ impl Player {
                         .iter()
                         .map(|&role_id| {
                             let entity_id = world.get_entity_id(role_id);
-                            let role_skin =
+                            let _role_skin =
                                 query_components!(world, entity_id, RoleSkin).0.unwrap();
                             FightRoleInfo {
                                 role_id,

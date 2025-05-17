@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
 use wicked_waifus_protocol::{
-    ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, ErrorCode, FormationAttrNotify, FormationAttrRequest, FormationAttrResponse, PlayerMotionRequest, PlayerMotionResponse, ProtocolUnit, RoleFavorListRequest, RoleFavorListResponse, RoleShowListUpdateRequest, RoleShowListUpdateResponse, UpdateFormationRequest, UpdateFormationResponse
+    ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, ErrorCode,
+    FormationAttrRequest, FormationAttrResponse, PlayerMotionRequest, PlayerMotionResponse,
+    RoleFavorListRequest, RoleFavorListResponse, RoleShowListUpdateRequest,
+    RoleShowListUpdateResponse, UpdateFormationRequest, UpdateFormationResponse,
 };
 
 use crate::logic::player::Player;
@@ -70,41 +73,41 @@ pub fn on_update_formation_request(
             }
 
             if let Some(old_formation) = player.formation_list.get(&real_formation_id) {
-                    let removed_entities: Vec<i64> = old_formation
-                        .role_ids
-                        .iter()
-                        .map(|&role_id| world.get_entity_id(role_id))
-                        .collect();
-                    removed_entities.iter().for_each(|&entity_id| {
-                        world.remove_entity(entity_id as i32);
-                    });
-                    player.notify(player.build_player_entity_remove_notify(
-                        removed_entities,
-                        ERemoveEntityType::RemoveTypeNormal,
-                    ));
-                }
-
-                let added_roles: Vec<Role> = formation
+                let removed_entities: Vec<i64> = old_formation
                     .role_ids
                     .iter()
-                    .map(|&role_id| Role::new(role_id))
+                    .map(|&role_id| world.get_entity_id(role_id))
                     .collect();
-
-                if !added_roles.is_empty() {
-                    // add new roles
-                    player.notify(player.build_player_entity_add_notify(added_roles, world));
-                }
-
-                // send update group formation notify
-                player.notify(player.build_update_group_formation_notify(
-                    RoleFormation {
-                        id: formation_id,
-                        cur_role,
-                        role_ids: formation.role_ids.clone(),
-                        is_current,
-                    },
-                    world,
+                removed_entities.iter().for_each(|&entity_id| {
+                    world.remove_entity(entity_id as i32);
+                });
+                player.notify(player.build_player_entity_remove_notify(
+                    removed_entities,
+                    ERemoveEntityType::RemoveTypeNormal,
                 ));
+            }
+
+            let added_roles: Vec<Role> = formation
+                .role_ids
+                .iter()
+                .map(|&role_id| Role::new(role_id))
+                .collect();
+
+            if !added_roles.is_empty() {
+                // add new roles
+                player.notify(player.build_player_entity_add_notify(added_roles, world));
+            }
+
+            // send update group formation notify
+            player.notify(player.build_update_group_formation_notify(
+                RoleFormation {
+                    id: formation_id,
+                    cur_role,
+                    role_ids: formation.role_ids.clone(),
+                    is_current,
+                },
+                world,
+            ));
 
             response.formation = Some(formation.clone());
         }

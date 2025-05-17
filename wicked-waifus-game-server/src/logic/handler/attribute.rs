@@ -55,6 +55,4 @@ pub fn on_formation_attr_request(
 			response.error_code = ErrorCode::ErrEntityNotFound.into()
 		};
 	}
-
-	
 }
