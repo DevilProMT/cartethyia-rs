@@ -1,8 +1,13 @@
 use std::collections::HashMap;
 
-use wicked_waifus_protocol::{CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, ItemRewardNotify, NormalItemUpdateNotify, RewardItemInfo, WR};
+use wicked_waifus_protocol::{
+    CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, ItemRewardNotify,
+    NormalItemUpdateNotify, RewardItemInfo, WR,
+};
 
-use wicked_waifus_data::pb_components::action::{Action, ChangeSelfEntityState, UnlockTeleportTrigger};
+use wicked_waifus_data::pb_components::action::{
+    Action, ChangeSelfEntityState, UnlockTeleportTrigger,
+};
 use wicked_waifus_data::pb_components::entity_state::EntityStateComponent;
 
 use crate::logic::ecs::component::ComponentContainer;
@@ -12,11 +17,9 @@ use crate::logic::utils::tag_utils;
 use crate::query_components;
 
 macro_rules! unimplemented_action {
-    ($action:ident) => {
-        {
-            tracing::warn!("Action not implemented for: {:?}", $action);
-        }
-    }
+    ($action:ident) => {{
+        tracing::warn!("Action not implemented for: {:?}", $action);
+    }};
 }
 
 // pub fn perform_action(player: &mut Player,
@@ -212,11 +215,13 @@ macro_rules! unimplemented_action {
 //     }
 // }
 
-fn change_self_entity_state_action(player: &mut Player,
-                            entity_id: i64,
-                            level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
-                            template_config: &wicked_waifus_data::TemplateConfigData,
-                            action: ChangeSelfEntityState) {
+pub fn change_self_entity_state_action(
+    player: &mut Player,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::TemplateConfigData,
+    action: ChangeSelfEntityState,
+) {
     let state = tag_utils::get_tag_id_by_name(action.entity_state.as_str());
 
     // TODO: update Tag::CommonEntityTags too??
@@ -230,9 +235,17 @@ fn change_self_entity_state_action(player: &mut Player,
         old_state
     };
 
-    if let Some(entity_state_component) = level_entity_data.components_data.entity_state_component.as_ref()
-        .or(template_config.components_data.entity_state_component.as_ref()).cloned() {
-        let entity_state_component: EntityStateComponent = entity_state_component;  // TODO: Remove this line, used for casting only
+    if let Some(entity_state_component) = level_entity_data
+        .components_data
+        .entity_state_component
+        .as_ref()
+        .or(template_config
+            .components_data
+            .entity_state_component
+            .as_ref())
+        .cloned()
+    {
+        let entity_state_component: EntityStateComponent = entity_state_component; // TODO: Remove this line, used for casting only
 
         // TODO: implement rest of cases
         if let Some(state_change_behaviors) = entity_state_component.state_change_behaviors {
@@ -243,7 +256,13 @@ fn change_self_entity_state_action(player: &mut Player,
                 if expected == state {
                     if let Some(actions) = state_change_behavior.action {
                         for sub in actions {
-                            handle_action(player, entity_id, level_entity_data, template_config, sub);
+                            handle_action(
+                                player,
+                                entity_id,
+                                level_entity_data,
+                                template_config,
+                                sub,
+                            );
                         }
                     }
                 }
@@ -254,8 +273,14 @@ fn change_self_entity_state_action(player: &mut Player,
     player.notify(EntityCommonTagNotify {
         id: entity_id,
         tags: vec![
-            CommonTagData { tag_id: old_state, remove_tag_ids: false }, // Remove
-            CommonTagData { tag_id: state, remove_tag_ids: true }, // Add
+            CommonTagData {
+                tag_id: old_state,
+                remove_tag_ids: false,
+            }, // Remove
+            CommonTagData {
+                tag_id: state,
+                remove_tag_ids: true,
+            }, // Add
         ],
     });
 

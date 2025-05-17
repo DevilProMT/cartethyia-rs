@@ -1,11 +1,20 @@
 use std::collections::HashMap;
 
-use wicked_waifus_data::pb_components::action::{CollectParams, UnlockTeleportTrigger};
-use wicked_waifus_protocol::{ItemRewardNotify, NormalItemUpdateNotify, RewardItemInfo, WR};
-
-use crate::logic::{
-    player::{ItemUsage, Player},
+use wicked_waifus_protocol::{
+    CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, ItemRewardNotify,
+    NormalItemUpdateNotify, RewardItemInfo, WR,
 };
+
+use wicked_waifus_data::pb_components::action::{
+    ChangeSelfEntityState, CollectParams, UnlockTeleportTrigger
+};
+use wicked_waifus_data::pb_components::entity_state::EntityStateComponent;
+
+use crate::logic::ecs::component::ComponentContainer;
+use crate::logic::handler::handle_action;
+use crate::logic::player::{ItemUsage, Player};
+use crate::logic::utils::tag_utils;
+use crate::query_components;
 
 pub fn collect_action(
     player: &mut Player,
@@ -69,7 +78,7 @@ pub fn collect_action(
 }
 
 #[inline(always)]
-fn unlock_teleport_trigger_action(
+pub fn unlock_teleport_trigger_action(
 	player: &mut Player, 
 	_entity_id: i64,
     _level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
@@ -77,4 +86,80 @@ fn unlock_teleport_trigger_action(
 	action: UnlockTeleportTrigger
 ) {
     player.unlock_teleport(action.teleport_id)
+}
+
+pub fn change_self_entity_state_action(
+    player: &mut Player,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::TemplateConfigData,
+    action: ChangeSelfEntityState,
+) {
+    let state = tag_utils::get_tag_id_by_name(action.entity_state.as_str());
+
+    // TODO: update Tag::CommonEntityTags too??
+    let old_state = {
+        let world_ref = player.world.borrow();
+        let world = world_ref.get_world_entity();
+        let mut state_tag = query_components!(world, entity_id, StateTag).0.unwrap();
+        let old_state = state_tag.state_tag_id;
+        tracing::debug!("ChangeSelfEntityState: old state {old_state} -> new state: {state}");
+        state_tag.state_tag_id = state;
+        old_state
+    };
+
+    if let Some(entity_state_component) = level_entity_data
+        .components_data
+        .entity_state_component
+        .as_ref()
+        .or(template_config
+            .components_data
+            .entity_state_component
+            .as_ref())
+        .cloned()
+    {
+        let entity_state_component: EntityStateComponent = entity_state_component; // TODO: Remove this line, used for casting only
+
+        // TODO: implement rest of cases
+        if let Some(state_change_behaviors) = entity_state_component.state_change_behaviors {
+            for state_change_behavior in state_change_behaviors {
+                // TODO: implement rest of cases
+                let expected = tag_utils::get_tag_id_by_name(state_change_behavior.state.as_str());
+
+                if expected == state {
+                    if let Some(actions) = state_change_behavior.action {
+                        for sub in actions {
+                            handle_action(
+                                player,
+                                entity_id,
+                                level_entity_data,
+                                template_config,
+                                sub,
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    player.notify(EntityCommonTagNotify {
+        id: entity_id,
+        tags: vec![
+            CommonTagData {
+                tag_id: old_state,
+                remove_tag_ids: false,
+            }, // Remove
+            CommonTagData {
+                tag_id: state,
+                remove_tag_ids: true,
+            }, // Add
+        ],
+    });
+
+    player.notify(EntityStateReadyNotify {
+        entity_id,
+        tag_id: state,
+        ready: true, // TODO: Always true? or shall we compare it to something??
+    });
 }
