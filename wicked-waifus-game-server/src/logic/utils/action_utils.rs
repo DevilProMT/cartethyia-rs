@@ -6,6 +6,7 @@ use wicked_waifus_data::pb_components::action::{Action, ChangeSelfEntityState, U
 use wicked_waifus_data::pb_components::entity_state::EntityStateComponent;
 
 use crate::logic::ecs::component::ComponentContainer;
+use crate::logic::handler::handle_action;
 use crate::logic::player::{ItemUsage, Player};
 use crate::logic::utils::tag_utils;
 use crate::query_components;
@@ -291,7 +292,7 @@ fn change_self_entity_state(player: &mut Player,
                 if expected == state {
                     if let Some(actions) = state_change_behavior.action {
                         for sub in actions {
-                            perform_action(player, entity_id, level_entity_data, template_config, sub);
+                            handle_action(player, entity_id, level_entity_data, template_config, sub);
                         }
                     }
                 }

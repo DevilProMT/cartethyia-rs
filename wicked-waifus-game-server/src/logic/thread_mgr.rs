@@ -1,4 +1,5 @@
 use wicked_waifus_commons::time_util;
+use wicked_waifus_protocol::{FormationAttr, FormationAttrNotify};
 use wicked_waifus_protocol_internal::PlayerSaveData;
 use wicked_waifus_protocol::{message::Message, AfterJoinSceneNotify, EnterGameResponse, JoinSceneNotify, SilenceNpcNotify, TransitionOptionPb};
 use std::collections::hash_map::Entry::Vacant;
@@ -173,6 +174,14 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
                 scene_info: Some(scene_info),
                 max_entity_id: i64::MAX,
                 transition_option: Some(TransitionOptionPb::default()),
+            });
+
+            player.notify(FormationAttrNotify {
+                duration: 1534854458,
+                formation_attrs: vec![
+                    FormationAttr { attr_id: 1, ratio: 2400, base_max_value: 24000, max_value: 24000, current_value: 24000 },
+                    FormationAttr { attr_id: 10, ratio: 2400, base_max_value: 15000, max_value: 15000, current_value: 15000 },
+                ],
             });
 
             player.notify(AfterJoinSceneNotify::default());

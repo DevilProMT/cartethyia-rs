@@ -26,6 +26,14 @@ const ROLE_OVERRIDES: &[(i32, &[i64])] = &[
     ]),
 ];
 
+const ROLE_BUFF_BLACKLIST: &[(i32, &[i64])] = &[
+    (1407, &[
+        // ciaconna's forte buffs are completely fucked to get from an algorithm and i hate kuro!
+        1407900003,
+        1407500040,
+    ]),
+];
+
 fn get_role_buff_overrides(role_id: i32) -> Option<&'static [i64]> {
     for &(role, buff) in ROLE_OVERRIDES {
         if role == role_id {
@@ -78,18 +86,17 @@ impl BufManager {
 
     pub fn create_permanent_buffs(&mut self, origin_id: i64, role_id: i32) -> Vec<FightBuffInformation> {
         let mut buffs = wicked_waifus_data::buff_data::iter().filter(|(id, buf)| {
-            id.to_string().starts_with(&role_id.to_string()) // must be part of char kit :)
-            && 
-            (
-                !id.to_string().contains("666")// KURO IS EVIL
-                && 
-                buf.duration_policy == 1
-            )
-            // && 
-            // !buf.ge_desc.contains("【废弃】") // remove "deprecated" buffs
+            let id_str = id.to_string();
+            let role_str = role_id.to_string();
+            
+            id_str.starts_with(&role_str) 
+            &&
+            id_str[role_str.len()..].chars().all(|c| c == '0') // ensure remaining chars are all '0'
         })
         .map(|x| *x.0)
         .collect::<Vec<i64>>();
+
+        tracing::debug!("adding roleid {:#?}", buffs);
 
         buffs.extend(OVERRIDE_BUFFS.iter().copied());
         if let Some(role_buff_overrides) = get_role_buff_overrides(role_id) {

@@ -224,6 +224,15 @@ pub fn add_player_entities(player: &Player) {
                 fight_buff_infos,
                 list_buff_effect_cd: vec![]
             };
+
+            // TODO: add actual weapon switching and remove this! - rabby
+            let equip_weapon = match role.role_id {
+                1409 => 21020056, // cartethyia
+                1207 => 21010036, // lupa
+                1301 => 21010036,
+                _ => role.equip_weapon,
+            };
+
             let entity = world
                 .create_builder(entity)
                 .with(ComponentContainer::PlayerOwnedEntityMarker(
@@ -258,7 +267,7 @@ pub fn add_player_entities(player: &Player) {
                 )))
                 .with(ComponentContainer::Movement(Movement::default()))
                 .with(ComponentContainer::Equip(Equip {
-                    weapon_id: role.equip_weapon,
+                    weapon_id: equip_weapon,
                     weapon_breach_level: 0, // TODO: store this too
                 }))
                 .with(ComponentContainer::VisionSkill(VisionSkill {

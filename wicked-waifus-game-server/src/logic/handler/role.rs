@@ -1,10 +1,7 @@
 use std::collections::HashSet;
 
 use wicked_waifus_protocol::{
-    ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, ErrorCode,
-    FormationAttrRequest, FormationAttrResponse, PlayerMotionRequest, PlayerMotionResponse,
-    RoleFavorListRequest, RoleFavorListResponse, RoleShowListUpdateRequest,
-    RoleShowListUpdateResponse, UpdateFormationRequest, UpdateFormationResponse,
+    ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, ErrorCode, FormationAttrNotify, FormationAttrRequest, FormationAttrResponse, PlayerMotionRequest, PlayerMotionResponse, ProtocolUnit, RoleFavorListRequest, RoleFavorListResponse, RoleShowListUpdateRequest, RoleShowListUpdateResponse, UpdateFormationRequest, UpdateFormationResponse
 };
 
 use crate::logic::player::Player;
@@ -41,14 +38,6 @@ pub fn on_role_favor_list_request(
     response: &mut RoleFavorListResponse,
 ) {
     response.favor_list = vec![]; // TODO: add favor
-    response.error_code = ErrorCode::Success.into();
-}
-
-pub fn on_formation_attr_request(
-    _player: &Player,
-    _request: FormationAttrRequest,
-    response: &mut FormationAttrResponse,
-) {
     response.error_code = ErrorCode::Success.into();
 }
 

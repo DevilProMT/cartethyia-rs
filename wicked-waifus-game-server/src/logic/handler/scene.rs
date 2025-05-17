@@ -22,12 +22,13 @@ pub fn on_scene_loading_finish_request(
     response: &mut SceneLoadingFinishResponse,
 ) {
     player.notify(JsPatchNotify {
-        content: WATER_MASK.to_string(),
+        content: WATER_MASK
+            .replace("{PLAYER_USERNAME}", "rabbit")
     });
     player.notify(JsPatchNotify {
         content: UID_FIX
-            .replace("{PLAYER_USERNAME}", &player.basic_info.name)
-            .replace("{SELECTED_COLOR}", "50FC71"),
+            .replace("{PLAYER_USERNAME}", "rabbit")
+            .replace("{SELECTED_COLOR}", "A491FA"),
     });
     player.notify(JsPatchNotify {
         content: CENSORSHIP_FIX.to_string(),

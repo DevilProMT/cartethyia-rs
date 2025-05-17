@@ -12,6 +12,10 @@ pub struct ExploreTools {
     pub roulette: Roulette,
 }
 
+const ADDITIONAL_ROULETTE: &[i32] = &[
+    1015 // flight
+];
+
 impl ExploreTools {
     pub fn build_save_data(&self) -> PlayerExploreToolsData {
         PlayerExploreToolsData {
@@ -62,6 +66,16 @@ impl ExploreTools {
             .take(3)
             .enumerate()
             .for_each(|(i, e)| roulette[i] = e.phantom_skill_id);
+
+        let mut count = 2;
+
+        explore_tools_data::iter()
+            .for_each(|e| {
+                if ADDITIONAL_ROULETTE.contains(&e.phantom_skill_id) {
+                    count += 1;
+                    roulette[count] = e.phantom_skill_id
+                }
+            });
 
         roulette
     }
