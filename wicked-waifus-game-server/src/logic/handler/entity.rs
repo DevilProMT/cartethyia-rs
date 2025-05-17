@@ -2,8 +2,8 @@ use wicked_waifus_protocol::{EntityAccessInfo, EntityAccessRangeRequest, EntityA
 
 use wicked_waifus_data::pb_components::option::OptionType;
 
+use crate::logic::handler::handle_action;
 use crate::{logic, logic::ecs::component::ComponentContainer, logic::player::Player, query_components};
-use crate::logic::utils::action_utils::perform_action;
 use crate::logic::utils::condition_utils::check_condition;
 
 pub fn on_entity_active_request(
@@ -190,7 +190,7 @@ pub fn on_entity_interact_request(
                 match option_type {
                     OptionType::Actions(actions) => {
                         for action in actions.actions {
-                            perform_action(player, request.entity_id, &entity, template_config, action);
+                            handle_action(player, request.entity_id, &entity, template_config, action);
                         }
                     }
                     OptionType::Flow(_) => {
