@@ -183,6 +183,10 @@ handle_request! {
     EntityInteract;
     EntityFollowTrack;
     GetRewardTreasureBox;
+    OrderApplyBuff;
+    OrderRemoveBuff;
+    ApplyGameplayEffect;
+    RemoveGameplayEffect;
 
     // Friend (TODO: Implement them)
     FriendAll;
@@ -321,6 +325,9 @@ handle_push! {
     // Entity
     MovePackage;
 
+    ApplyGameplayEffect;
+    RemoveGameplayEffect;
+
     // Misc
     VersionInfo;
 }
@@ -353,10 +360,10 @@ handle_action! {
     // AwakeEntity,
     // ChangeLiftTarget,
     // CalculateVar,
-    // AddBuffToPlayer,
-    // RemoveBuffFromPlayer,
-    // AddBuffToEntity,
-    // RemoveBuffFromEntity,
+    AddBuffToPlayer,
+    RemoveBuffFromPlayer,
+    AddBuffToEntity,
+    RemoveBuffFromEntity,
     // Prompt,
     // SetEntityVisible,
     // DestroyEntity,

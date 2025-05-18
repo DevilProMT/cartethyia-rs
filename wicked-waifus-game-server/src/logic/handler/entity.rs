@@ -1,4 +1,4 @@
-use wicked_waifus_protocol::{EntityAccessInfo, EntityAccessRangeRequest, EntityAccessRangeResponse, EntityActiveRequest, EntityActiveResponse, EntityFollowTrackRequest, EntityFollowTrackResponse, EntityInteractRequest, EntityInteractResponse, EntityOnLandedRequest, EntityOnLandedResponse, EntityPb, EntityPositionRequest, EntityPositionResponse, ErrorCode, GetRewardTreasureBoxRequest, GetRewardTreasureBoxResponse, MovePackagePush};
+use wicked_waifus_protocol::{ApplyGameplayEffectPush, ApplyGameplayEffectRequest, ApplyGameplayEffectResponse, EntityAccessInfo, EntityAccessRangeRequest, EntityAccessRangeResponse, EntityActiveRequest, EntityActiveResponse, EntityFollowTrackRequest, EntityFollowTrackResponse, EntityInteractRequest, EntityInteractResponse, EntityOnLandedRequest, EntityOnLandedResponse, EntityPb, EntityPositionRequest, EntityPositionResponse, ErrorCode, GetRewardTreasureBoxRequest, GetRewardTreasureBoxResponse, MovePackagePush, OrderApplyBuffRequest, OrderApplyBuffResponse, OrderRemoveBuffRequest, OrderRemoveBuffResponse, RemoveGameplayEffectPush, RemoveGameplayEffectRequest, RemoveGameplayEffectResponse};
 
 use wicked_waifus_data::pb_components::option::OptionType;
 
@@ -232,6 +232,52 @@ pub fn on_get_reward_treasure_box_request(
 ) {
     let config_id = get_config_id_from_entity_id(player, request.entity_id);
     tracing::debug!("GetRewardTreasureBoxRequest with ID: {} and ConfigID {config_id}", request.entity_id);
+}
+
+pub fn on_order_apply_buff_request(
+    player: &Player,
+    request: OrderApplyBuffRequest,
+    _response: &mut OrderApplyBuffResponse,
+) {
+    tracing::info!("OrderApplyBuffRequest receuived");
+}
+
+pub fn on_order_remove_buff_request(
+    player: &Player,
+    request: OrderRemoveBuffRequest,
+    _response: &mut OrderRemoveBuffResponse,
+) {
+    tracing::info!("OrderRemoveBuffRequest receuived");
+}
+
+pub fn on_apply_gameplay_effect_request(
+    player: &Player,
+    request: ApplyGameplayEffectRequest,
+    response: &mut ApplyGameplayEffectResponse
+) {
+    tracing::info!("applygameplayeffect receuived");
+}
+
+pub fn on_apply_gameplay_effect_push(
+    player: &Player,
+    push: ApplyGameplayEffectPush
+) {
+    tracing::info!("applygameplayeffect receuived");
+}
+
+pub fn on_remove_gameplay_effect_request(
+    player: &Player,
+    request: RemoveGameplayEffectRequest,
+    response: &mut RemoveGameplayEffectResponse
+) {
+    tracing::info!("applygameplayeffect receuived");
+}
+
+pub fn on_remove_gameplay_effect_push(
+    player: &Player,
+    push: RemoveGameplayEffectPush
+) {
+    tracing::info!("applygameplayeffect receuived");
 }
 
 fn get_config_id_from_entity_id(player: &Player, entity_id: i64) -> i64 {

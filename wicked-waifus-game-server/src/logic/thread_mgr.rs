@@ -1,7 +1,10 @@
-use wicked_waifus_commons::time_util;
-use wicked_waifus_protocol::{FormationAttr, FormationAttrNotify};
-use wicked_waifus_protocol_internal::PlayerSaveData;
-use wicked_waifus_protocol::{message::Message, AfterJoinSceneNotify, EnterGameResponse, JoinSceneNotify, SilenceNpcNotify, TransitionOptionPb};
+use super::{ecs::world::World, player::Player, utils::world_util};
+use crate::logic::ecs::world::WorldEntity;
+use crate::{
+    logic,
+    player_save_task::{self, PlayerSaveReason},
+    session::Session,
+};
 use std::collections::hash_map::Entry::Vacant;
 use std::{
     cell::RefCell,
@@ -14,16 +17,20 @@ use std::{
     thread,
     time::Duration,
 };
-use super::{ecs::world::World, player::Player, utils::world_util};
-use crate::logic::ecs::world::WorldEntity;
-use crate::{logic, player_save_task::{self, PlayerSaveReason}, session::Session};
+use wicked_waifus_commons::time_util;
+use wicked_waifus_protocol::{
+    message::Message, AfterJoinSceneNotify, EnterGameResponse, JoinSceneNotify, SilenceNpcNotify,
+    TransitionOptionPb,
+};
+use wicked_waifus_protocol::{FormationAttr, FormationAttrNotify};
+use wicked_waifus_protocol_internal::PlayerSaveData;
 
 pub enum LogicInput {
     AddPlayer {
         player_id: i32,
         enter_rpc_id: u16,
         session: Arc<Session>,
-        player_save_data: PlayerSaveData,
+        player_save_data: Box<PlayerSaveData>,
     },
     RemovePlayer {
         player_id: i32,
@@ -133,16 +140,14 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
         } => {
             let (player, is_player) = if let Vacant(e) = state.players.entry(player_id) {
                 (
-                    e.insert(RefCell::new(Player::load_from_save(player_save_data))),
+                    e.insert(RefCell::new(Player::load_from_save(*player_save_data))),
                     true,
                 )
+            } else if let Some(player) = state.players.get_mut(&player_id) {
+                (player, false)
             } else {
-                if let Some(player) = state.players.get_mut(&player_id) {
-                    (player, false)
-                } else {
-                    tracing::warn!("logic_thread: get player requested, but player {player_id} with data doesn't exist");
-                    return;
-                }
+                tracing::warn!("logic_thread: get player requested, but player {player_id} with data doesn't exist");
+                return;
             };
 
             let mut player = player.borrow_mut();
@@ -179,8 +184,20 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
             player.notify(FormationAttrNotify {
                 duration: 1534854458,
                 formation_attrs: vec![
-                    FormationAttr { attr_id: 1, ratio: 2400, base_max_value: 24000, max_value: 24000, current_value: 24000 },
-                    FormationAttr { attr_id: 10, ratio: 2400, base_max_value: 15000, max_value: 15000, current_value: 15000 },
+                    FormationAttr {
+                        attr_id: 1,
+                        ratio: 2400,
+                        base_max_value: 24000,
+                        max_value: 24000,
+                        current_value: 24000,
+                    },
+                    FormationAttr {
+                        attr_id: 10,
+                        ratio: 2400,
+                        base_max_value: 15000,
+                        max_value: 15000,
+                        current_value: 15000,
+                    },
                 ],
             });
 

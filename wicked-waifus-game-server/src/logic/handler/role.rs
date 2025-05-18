@@ -9,6 +9,7 @@ use wicked_waifus_protocol::{
 
 use crate::logic::player::Player;
 use crate::logic::role::{Role, RoleFormation};
+use crate::logic::utils::world_util::summon_concomitant;
 
 pub fn on_role_show_list_update_request(
     player: &mut Player,
@@ -83,7 +84,7 @@ pub fn on_update_formation_request(
                 });
                 player.notify(player.build_player_entity_remove_notify(
                     removed_entities,
-                    ERemoveEntityType::RemoveTypeNormal,
+                    ERemoveEntityType::RemoveTypeForce,
                 ));
             }
 
@@ -94,7 +95,7 @@ pub fn on_update_formation_request(
                 .collect();
 
             if !added_roles.is_empty() {
-                // add new roles
+                // add new role entities
                 player.notify(player.build_player_entity_add_notify(added_roles, world));
             }
 

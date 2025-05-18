@@ -51,12 +51,12 @@ async fn handler_loop(
             return;
         };
 
-        tracing::debug!(
-            "received message from service: {}, rpc_id: {} message_id: {}",
-            message.src_service_id,
-            message.rpc_id,
-            message.message_id
-        );
+        // tracing::debug!(
+        //     "received message from service: {}, rpc_id: {} message_id: {}",
+        //     message.src_service_id,
+        //     message.rpc_id,
+        //     message.message_id
+        // );
 
         match message.message_id {
             CreatePlayerDataRequest::MESSAGE_ID => {
@@ -141,7 +141,7 @@ async fn on_start_player_session_request(
         player_id: player_data.player_id,
         enter_rpc_id: message.rpc_id,
         session: session.clone(),
-        player_save_data,
+        player_save_data: Box::new(player_save_data),
     });
 
     session_mgr.add(session.clone());

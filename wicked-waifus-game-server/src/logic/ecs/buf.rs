@@ -86,12 +86,13 @@ impl BufManager {
 
     pub fn create_permanent_buffs(&mut self, origin_id: i64, role_id: i32) -> Vec<FightBuffInformation> {
         let mut buffs = wicked_waifus_data::buff_data::iter().filter(|(id, buf)| {
-            let id_str = id.to_string();
-            let role_str = role_id.to_string();
-            
-            id_str.starts_with(&role_str) 
-            &&
-            id_str[role_str.len()..].chars().all(|c| c == '0') // ensure remaining chars are all '0'
+            id.to_string().starts_with(&role_id.to_string()) // must be part of char kit :)
+            && 
+            !id.to_string().contains("666")// KURO IS EVIL
+            && 
+            buf.duration_policy == 1
+            && 
+            !buf.ge_desc.contains("【废弃】") // remove "deprecated" buffs
         })
         .map(|x| *x.0)
         .collect::<Vec<i64>>();

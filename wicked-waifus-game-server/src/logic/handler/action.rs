@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use wicked_waifus_protocol::{
-    CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, ItemRewardNotify,
-    NormalItemUpdateNotify, RewardItemInfo, WR,
+    CommonTagData, EntityCommonTagNotify, EntityStateReadyNotify, FightBuffInformation, ItemRewardNotify, NormalItemUpdateNotify, RewardItemInfo, WR
 };
 
 use wicked_waifus_data::pb_components::action::{
-    ChangeSelfEntityState, CollectParams, UnlockTeleportTrigger
+    AddBuffToEntity, AddBuffToPlayer, ChangeSelfEntityState, CollectParams, RemoveBuffFromEntity, RemoveBuffFromPlayer, UnlockTeleportTrigger
 };
 use wicked_waifus_data::pb_components::entity_state::EntityStateComponent;
 
 use crate::logic::ecs::component::ComponentContainer;
+use crate::logic::ecs::world::WorldEntity;
 use crate::logic::handler::handle_action;
 use crate::logic::player::{ItemUsage, Player};
 use crate::logic::utils::tag_utils;
@@ -162,4 +162,94 @@ pub fn change_self_entity_state_action(
         tag_id: state,
         ready: true, // TODO: Always true? or shall we compare it to something??
     });
+}
+
+fn add_buff_to_entity(
+    world: &mut WorldEntity,
+    entity_ids: Vec<i64>,
+    buff_ids: Vec<i64>,
+) {
+    for entity_id in entity_ids {
+        let (Some(mut buff_component),) = query_components!(world, entity_id, FightBuff) else {
+            continue;
+        };
+
+        for buff_id in &buff_ids {
+            buff_component.fight_buff_infos.push(FightBuffInformation {
+                handle_id: 1,
+                buff_id: *buff_id,
+                level: 1,
+                stack_count: 1,
+                instigator_id: 0,
+                entity_id: 0,
+                apply_type: 0,
+                duration: -1.0,
+                left_duration: -1.0,
+                context: vec![],
+                is_active: true,
+                server_id: 1,
+                message_id: 1,
+            });
+        }
+    }
+}
+
+pub fn add_buff_to_entity_action(
+    player: &mut Player,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::TemplateConfigData,
+	params: AddBuffToEntity
+) {
+    tracing::info!("entity buff request received with the following details: {:#?}.", params);
+    let mut world_ref = player.world.borrow_mut();
+    let world = world_ref.get_mut_world_entity();
+
+    match params {
+        AddBuffToEntity::SingleEntityBuffs(single_entity_buffs) => {
+            add_buff_to_entity(world, vec![single_entity_buffs.entity_id], single_entity_buffs.buff_ids)
+        },
+        AddBuffToEntity::MultipleEntitiesBuff(multiple_entities_buff) => {
+            add_buff_to_entity(world, multiple_entities_buff.entity_ids, multiple_entities_buff.buff_ids)
+        },
+        AddBuffToEntity::SelfEntityBuff(self_entity_buff) => {
+            add_buff_to_entity(world, vec![entity_id], self_entity_buff.buff_ids)
+        },
+    }
+}
+
+pub fn remove_buff_from_entity_action(
+    player: &mut Player,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::TemplateConfigData,
+	params: RemoveBuffFromEntity
+) {
+    tracing::info!("entity buff request received with the following details: {:#?}.", params);
+    let mut world_ref = player.world.borrow_mut();
+    let world = world_ref.get_mut_world_entity();
+}
+
+pub fn add_buff_to_player_action(
+    player: &mut Player,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::TemplateConfigData,
+	params: AddBuffToPlayer
+) {
+    tracing::info!("entity buff request received with the following details: {:#?}.", params);
+    let mut world_ref = player.world.borrow_mut();
+    let world = world_ref.get_mut_world_entity();
+}
+
+pub fn remove_buff_from_player_action(
+    player: &mut Player,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::TemplateConfigData,
+	params: RemoveBuffFromPlayer
+) {
+    tracing::info!("entity buff request received with the following details: {:#?}.", params);
+    let mut world_ref = player.world.borrow_mut();
+    let world = world_ref.get_mut_world_entity();
 }
