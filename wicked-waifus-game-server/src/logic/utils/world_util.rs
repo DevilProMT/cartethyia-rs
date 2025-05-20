@@ -5,7 +5,7 @@ use wicked_waifus_protocol::{
 
 use wicked_waifus_data::pb_components::ComponentsData;
 use wicked_waifus_data::{
-    base_property_data, blueprint_config_data, summon_cfg_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData
+    base_property_data, blue_print_config_data, summon_cfg_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData
 };
 
 use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Tag};
@@ -27,23 +27,23 @@ use crate::logic::{
 
 use crate::query_with;
 
-pub fn summon_concomitant(player: &Player, world: &mut WorldEntity, template_cfg: &wicked_waifus_data::TemplateConfigData, cur_summon_id: i32) -> (Entity, Vec<i64>) {
+pub fn summon_concomitant(player: &Player, world: &mut WorldEntity, template_cfg: &wicked_waifus_data::TemplateConfigData, owner_entity: i64) -> (Entity, Vec<i64>) {
     let mut concomitant_buffs: Vec<FightBuffInformation> = Vec::new();
 
     let summon_cfg = summon_cfg_data::get(&template_cfg.blueprint_type).unwrap();
     let concomitant_config_id = template_cfg.id;
 
     let con_entity = world.create_entity(
-        cur_summon_id,
+        concomitant_config_id,
         EEntityType::Monster.into(),
         player.basic_info.cur_map_id,
     );
 
     for buff_id in &summon_cfg.born_buff_id {
-        concomitant_buffs.push(world.create_buff(cur_summon_id, *buff_id));
+        concomitant_buffs.push(world.create_buff(con_entity.entity_id, *buff_id));
     }
 
-    tracing::info!("Adding Concomitant with id: {} and buffs {:#?}", concomitant_config_id, concomitant_buffs);
+    tracing::info!("Adding Concomitant with entity_id: {} id: {} and buffs {:#?}", con_entity.entity_id, concomitant_config_id, concomitant_buffs);
 
     (world
         .create_builder(con_entity)
@@ -76,6 +76,7 @@ pub fn summon_concomitant(player: &Player, world: &mut WorldEntity, template_cfg
         )))
         .with(ComponentContainer::FightBuff(FightBuff { fight_buff_infos: concomitant_buffs, ..Default::default() }))
         .with(ComponentContainer::Summoner(Summoner {
+            summoner_id: owner_entity,
             summon_cfg_id: summon_cfg.id,
             summon_skill_id: 0,
             summon_type: ESummonType::ESummonTypeConcomitantCustom.into()
@@ -116,50 +117,56 @@ fn add_player_entity(player: &Player, formation: &RoleFormation, world: &mut Wor
         let mut concomitants: Vec<i64> = vec![];
         let mut concom_pbs = Vec::new();
 
-        let role_data = wicked_waifus_data::role_info_data::iter().find(|r| r.id == role.role_id).unwrap();
-        if let Some(skin_damage_first) = role_data.skin_damage.first() {
-            let role_name = skin_damage_first.as_str()
-                .split('/').next_back()
-                .and_then(|s| s.strip_prefix("DA_"))
-                .and_then(|s| s.split('_').next()).unwrap();
+        if let Some(role_skin_data) = wicked_waifus_data::role_skin_data::iter()
+            .find(|r| r.role_id == role.role_id)
+        {
+            if let Some(role_name) = role_skin_data
+                .ui_scene_performance_abp
+                .split('/')
+                .nth(6)
+            {
+                for model_config in wicked_waifus_data::model_config_preload_data::iter().filter(|cfg| {
+                    cfg.actor_class_path.starts_with("/Game/Aki/Character/Monster/Summon/")
+                        && cfg.actor_class_path.to_lowercase().contains(&role_name.to_lowercase())
+                }) {
+                    let blueprint_config = wicked_waifus_data::blue_print_config_data::iter()
+                        .find(|r| r.model_id == model_config.id);
 
-            let mut summon_id = 1000;
-            for model_config in wicked_waifus_data::model_config_preload_data::iter().filter(|cfg| {
-                cfg.actor_class_path.starts_with("/Game/Aki/Character/Monster/Summon/") && cfg.actor_class_path.contains(role_name)
-            }) {
-                let template_cfg = wicked_waifus_data::template_config_data::iter().find(|cfg| {
-                    let template_model_component = cfg.1.components_data.model_component.clone();
-                    template_model_component.is_some() 
-                    && 
-                    template_model_component.clone().unwrap().model_type.unwrap().model_id.is_some() 
-                    && 
-                    template_model_component.unwrap().model_type.unwrap().model_id.unwrap() == model_config.id
-                }).unwrap().1;
+                    let summon_cfg = summon_cfg_data::get(&blueprint_config.unwrap().blueprint_type);
+                    if summon_cfg.is_none(){
+                        continue
+                    };
 
-                let (concomitant, buffs) = summon_concomitant(player, world, template_cfg, summon_id);
-                let mut pb = EntityPb {
-                    id: summon_id as i64,
-                    ..Default::default()
-                };
+                    let template_cfg = wicked_waifus_data::template_config_data::iter().find(|cfg| {
+                        cfg.1.blueprint_type == summon_cfg.unwrap().blueprint_type
+                    }).unwrap().1;
 
-                for buff_id in buffs {
-                    fight_buff_infos.push(world.create_buff(entity.entity_id, buff_id));
+                    let (concomitant, buffs) = summon_concomitant(player, world, template_cfg, entity.entity_id as i64);
+                    let mut pb = EntityPb {
+                        id: concomitant.entity_id as i64,
+                        ..Default::default()
+                    };
+
+                    for buff_id in buffs {
+                        fight_buff_infos.push(world.create_buff(entity.entity_id, buff_id));
+                    }
+
+                    world
+                        .get_entity_components(concomitant.entity_id)
+                        .into_iter()
+                        .for_each(|comp| comp.set_pb_data(&mut pb));
+                    concom_pbs.push(pb);
+                    concomitants.push(concomitant.entity_id.into());
                 }
-
-                world
-                    .get_entity_components(summon_id)
-                    .into_iter()
-                    .for_each(|comp| comp.set_pb_data(&mut pb));
-                concom_pbs.push(pb);
-                summon_id += 1;
-                concomitants.push(concomitant.entity_id.into());
+                for pb in concom_pbs {
+                    player.notify(EntityAddNotify {
+                        entity_pbs: vec![pb],
+                        remove_tag_ids: true,
+                    });
+                }
             }
-
-            player.notify(EntityAddNotify {
-                entity_pbs: concom_pbs,
-                remove_tag_ids: true,
-            });
         }
+
         fight_buff_infos.dedup_by(|x, z| x.buff_id == z.buff_id);
 
         let buf_manager = FightBuff {
@@ -400,7 +407,8 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], extern
                 continue;
             }
 
-            let blueprint_config = blueprint_config_data::get(&entity.blueprint_type);
+            let blueprint_config = wicked_waifus_data::blue_print_config_data::iter()
+                .find(|br| br.blueprint_type == entity.blueprint_type);
             let template_config = template_config_data::get(&entity.blueprint_type);
             if blueprint_config.is_none() || template_config.is_none() {
                 continue;

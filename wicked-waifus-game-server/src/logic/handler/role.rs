@@ -61,6 +61,28 @@ pub fn on_update_formation_request(
         let cur_role = formation.cur_role;
         let is_current = formation.is_current;
 
+        if is_current {
+            if let Some(old_formation) = player.formation_list.get(&formation_id) {
+                let mut removed_entities: Vec<i64> = old_formation
+                    .role_ids
+                    .iter()
+                    .map(|&role_id| world.get_entity_id(role_id))
+                    .collect();
+                for id in removed_entities.clone() {
+                    if let (Some(concomitant),) = query_components!(world, id, Concomitant) {
+                        removed_entities.extend(concomitant.custom_entity_ids.clone());
+                    };
+                }
+                removed_entities.iter().for_each(|&entity_id| {
+                    world.remove_entity(entity_id as i32);
+                });
+                player.notify(player.build_player_entity_remove_notify(
+                    removed_entities,
+                    ERemoveEntityType::RemoveTypeForce,
+                ));
+            }
+        }
+
         // update all formation and check formation_list
         player
             .formation_list
@@ -90,26 +112,6 @@ pub fn on_update_formation_request(
             {
                 real_formation_id = rf.id;
                 rf.is_current = false;
-            }
-
-            if let Some(old_formation) = player.formation_list.get(&real_formation_id) {
-                let mut removed_entities: Vec<i64> = old_formation
-                    .role_ids
-                    .iter()
-                    .map(|&role_id| world.get_entity_id(role_id))
-                    .collect();
-                for id in removed_entities.clone() {
-                    if let (Some(concomitant),) = query_components!(world, id, Concomitant) {
-                        removed_entities.extend(concomitant.custom_entity_ids.clone());
-                    };
-                }
-                removed_entities.iter().for_each(|&entity_id| {
-                    world.remove_entity(entity_id as i32);
-                });
-                player.notify(player.build_player_entity_remove_notify(
-                    removed_entities,
-                    ERemoveEntityType::RemoveTypeForce,
-                ));
             }
 
             player.build_player_entity_add_notify(world);

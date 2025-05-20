@@ -113,6 +113,7 @@ json_data! {
     AdventureTask;
     Area;
     BaseProperty;
+    BluePrintConfig;
     CalabashDevelopReward;
     CalabashLevel;
     Damage;
@@ -165,7 +166,6 @@ json_data! {
 json_hash_table_data! {
     AiBase, id, i32;
     AiStateMachineConfig, id, String;
-    BlueprintConfig, blueprint_type, String;
     DragonPool, id, i32;
     DropPackage, id, i32;
     TemplateConfig, blueprint_type, String;
