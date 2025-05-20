@@ -100,7 +100,6 @@ pub struct RoleInfoData {
     pub role_guide: i32,
     #[cfg(feature = "strict_json_fields")]
     pub red_dot_disable_rule: i32,
-    #[cfg(feature = "strict_json_fields")]
     pub skin_damage: Vec<String>,
     #[cfg(feature = "strict_json_fields")]
     pub hide_hu_lu: bool,

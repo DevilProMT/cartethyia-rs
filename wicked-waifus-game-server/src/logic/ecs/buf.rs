@@ -26,14 +26,6 @@ const ROLE_OVERRIDES: &[(i32, &[i64])] = &[
     ]),
 ];
 
-const ROLE_BUFF_BLACKLIST: &[(i32, &[i64])] = &[
-    (1407, &[
-        // ciaconna's forte buffs are completely fucked to get from an algorithm and i hate kuro!
-        1407900003,
-        1407500040,
-    ]),
-];
-
 fn get_role_buff_overrides(role_id: i32) -> Option<&'static [i64]> {
     for &(role, buff) in ROLE_OVERRIDES {
         if role == role_id {
@@ -127,6 +119,26 @@ impl BufManager {
                 buff
             })
             .collect::<Vec<_>>()
+    }
+
+    pub fn create_buff(&mut self, origin_id: i64, buff_id: i64) -> FightBuffInformation {
+        let mut buff = FightBuffInformation {
+            handle_id: 0,
+            buff_id,
+            level: 1,
+            stack_count: 1,
+            instigator_id: origin_id,
+            entity_id: origin_id,
+            apply_type: 0,
+            duration: -1f32,
+            left_duration: -1f32,
+            context: vec![],
+            is_active: true,
+            server_id: 0,
+            message_id: 0,
+        };
+        self.create(&mut buff);
+        buff
     }
 }
 

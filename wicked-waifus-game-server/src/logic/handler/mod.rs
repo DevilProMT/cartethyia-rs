@@ -59,7 +59,7 @@ macro_rules! handle_request {
                                 return;
                             };
 
-                            tracing::debug!("logic: processing request {}", stringify!($($inner_package::)?[<$name Request>]));
+                            // tracing::debug!("logic: processing request {}", stringify!($($inner_package::)?[<$name Request>]));
 
                             let mut response = ::wicked_waifus_protocol::$($inner_package::)?[<$name Response>]::default();
                             [<on_ $($inner_package:snake _)? $name:snake _request>](player, request, &mut response);

@@ -138,6 +138,7 @@ json_data! {
     LevelPlayNodeData;
     LivenessTask;
     LordGym;
+    ModelConfigPreload;
     MonsterDetection;
     MonsterPropertyGrowth;
     Motion;

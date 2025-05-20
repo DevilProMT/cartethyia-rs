@@ -169,8 +169,7 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
                 .world
                 .borrow_mut()
                 .set_in_world_player_data(player.build_in_world_player());
-
-            world_util::add_player_entities(&player);
+            world_util::add_player_entities(&player, player.formation_list.get(&player.cur_formation_id).unwrap(), None);
             let scene_info = world_util::build_scene_information(&player);
 
             player.notify(SilenceNpcNotify::default());
@@ -237,10 +236,14 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
                 return;
             };
 
-            let _ = state.worlds.remove(&player_id);
+            let removed_world = state.worlds.remove(&player_id).unwrap();
+            let mut removed_world_ref = removed_world.borrow_mut();
+            let world = removed_world_ref.get_mut_world_entity();
+            for entity_id in world.get_all_entity_ids() {
+                world.remove_entity(entity_id);
+            }
+            
             // TODO: kick co-op players from removed world
-            // TODO: Remove all entities
-
             player_save_task::push(
                 player_id,
                 player.borrow().build_save_data(),

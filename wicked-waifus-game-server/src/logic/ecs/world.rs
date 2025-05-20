@@ -108,11 +108,15 @@ impl WorldEntity {
         self.components.remove(&entity_id).is_some() && self.entity_manager.remove(entity_id)
     }
 
-    pub fn active_entity_empty(&self) -> bool {
-        self.entity_manager.active_entity_empty()
+    pub fn get_all_entity_ids(&mut self) -> Vec<i32> {
+        self.entity_manager.get_all_entity_id()
     }
 
     pub fn generate_role_permanent_buffs(&mut self, entity_id: i32, role_id: i32) -> Vec<FightBuffInformation> {
         self.buff_manager.create_permanent_buffs(entity_id as i64, role_id)
+    }
+
+    pub fn create_buff(&mut self, entity_id: i32, buff_id: i64) -> FightBuffInformation {
+        self.buff_manager.create_buff(entity_id as i64, buff_id)
     }
 }
