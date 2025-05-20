@@ -160,10 +160,10 @@ impl Role {
         // TODO: Integrity check, value has to be between 0 and max
         base_stats.life = base_stats.life_max;
         base_stats.energy = base_stats.energy_max;
-        base_stats.special_energy_1 = base_stats.special_energy_1_max;
-        base_stats.special_energy_2 = base_stats.special_energy_2_max;
-        base_stats.special_energy_3 = base_stats.special_energy_3_max;
-        base_stats.special_energy_4 = base_stats.special_energy_4_max;
+        base_stats.special_energy_1 = self.special_energy_1;
+        base_stats.special_energy_2 = self.special_energy_2;
+        base_stats.special_energy_3 = self.special_energy_3;
+        base_stats.special_energy_4 = self.special_energy_4;
         base_stats.element_energy = base_stats.element_energy_max;
         base_stats
     }

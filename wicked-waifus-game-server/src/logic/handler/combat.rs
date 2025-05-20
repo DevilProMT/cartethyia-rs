@@ -160,38 +160,38 @@ fn handle_damage_execute_request(
             ..Default::default()
         }),
     ));
-    if let Some((value, _)) = query_components!(world, request.target_entity_id, Attribute)
-        .0
-        .unwrap()
-        .attr_map
-        .get(&EAttributeType::Life)
-    {
-        let updated_value = match value - damage >= 0 {
-            true => value - damage,
-            false => 0,
-        };
-        receive_pack.data.push(create_combat_notify(
-            CombatCommon {
-                entity_id: request.target_entity_id,
-                ..Default::default()
-            },
-            combat_notify_data::Message::AttributeChangedNotify(AttributeChangedNotify {
-                id: request.target_entity_id,
-                attributes: vec![GameplayAttributeData {
-                    current_value: updated_value,
-                    value_increment: updated_value,
-                    attribute_type: EAttributeType::Life.into(),
-                }],
-            }),
-        ));
-        if updated_value == 0 {
-            world_util::remove_entity(
-                player,
-                request.target_entity_id,
-                ERemoveEntityType::HpIsZero,
-            );
-        }
-    }
+    // if let Some((value, _)) = query_components!(world, request.target_entity_id, Attribute)
+    //     .0
+    //     .unwrap()
+    //     .attr_map
+    //     .get(&EAttributeType::Life)
+    // {
+    //     let updated_value = match value - damage >= 0 {
+    //         true => value - damage,
+    //         false => 0,
+    //     };
+    //     receive_pack.data.push(create_combat_notify(
+    //         CombatCommon {
+    //             entity_id: request.target_entity_id,
+    //             ..Default::default()
+    //         },
+    //         combat_notify_data::Message::AttributeChangedNotify(AttributeChangedNotify {
+    //             id: request.target_entity_id,
+    //             attributes: vec![GameplayAttributeData {
+    //                 current_value: updated_value,
+    //                 value_increment: updated_value,
+    //                 attribute_type: EAttributeType::Life.into(),
+    //             }],
+    //         }),
+    //     ));
+    //     if updated_value == 0 {
+    //         world_util::remove_entity(
+    //             player,
+    //             request.target_entity_id,
+    //             ERemoveEntityType::HpIsZero,
+    //         );
+    //     }
+    // }
 
     response.error_code = ErrorCode::Success.into();
 }

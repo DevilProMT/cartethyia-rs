@@ -4,8 +4,8 @@ use serde::Deserialize;
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]
 #[serde(rename_all = "PascalCase")]
 pub struct ModelType {
-	r#type: Option<String>,
-	model_id: Option<i32>
+	pub r#type: Option<String>,
+	pub model_id: Option<i32>
 }
 
 #[derive(Deserialize, Debug, Clone)]

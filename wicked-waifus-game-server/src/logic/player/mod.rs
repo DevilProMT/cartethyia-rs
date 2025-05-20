@@ -9,11 +9,11 @@ use wicked_waifus_protocol::message::Message;
 use wicked_waifus_protocol::player_attr::Value;
 use wicked_waifus_protocol::{
     AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify,
-    ControlInfoNotify, EEntityType, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify,
-    EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState,
+    ControlInfoNotify, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify,
+    EntityRemoveInfo, EntityRemoveNotify,
     FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FormationRoleInfo,
     GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify,
-    LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MapUnlockFieldNotify,
+    LevelPlayInfoNotify, LivingStatus, MailInfosNotify,
     MonthCardDailyRewardNotify, MoonChasingTargetGetCountNotify,
     MoonChasingTrackMoonHandbookRewardNotify, NormalItemUpdateNotify, PassiveSkillNotify,
     PbGetRoleListNotify, PlayerAttr, PlayerAttrKey, PlayerAttrNotify, PlayerAttrType,
@@ -24,11 +24,12 @@ use wicked_waifus_protocol::{
 };
 use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
 
+use super::ecs::component::ComponentContainer;
+use super::utils::world_util::add_player_entities;
 use super::{
     ecs::world::World,
     role::{Role, RoleFormation},
 };
-use crate::logic::components::RoleSkin;
 use crate::logic::ecs::world::WorldEntity;
 use crate::logic::player::basic_info::PlayerBasicInfo;
 use crate::logic::player::explore_tools::ExploreTools;
@@ -46,15 +47,8 @@ use crate::logic::player::player_mc_element::PlayerMcElement;
 use crate::logic::player::player_month_card::PlayerMonthCard;
 use crate::logic::player::player_teleports::{PlayerTeleport, PlayerTeleports};
 use crate::logic::player::player_tutorials::{PlayerTutorial, PlayerTutorials};
-use crate::logic::{
-    components::{
-        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
-        Position, Visibility, VisionSkill, SoarWingSkin
-    },
-    ecs::component::ComponentContainer,
-};
 use crate::session::Session;
-use crate::{config, create_player_entity_pb, query_components};
+use crate::{config, query_components};
 use crate::logic::player::Element::Spectro;
 
 mod basic_info;
@@ -358,16 +352,8 @@ impl Player {
         }
     }
 
-    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>, world: &mut WorldEntity) -> EntityAddNotify {
-        create_player_entity_pb!(
-            role_list,
-            self.basic_info.cur_map_id,
-            self,
-            self.basic_info.id,
-            self.location.position.clone(),
-            self.explore_tools,
-            world
-        )
+    pub fn build_player_entity_add_notify(&self, world: &mut WorldEntity) {
+        add_player_entities(self, self.formation_list.get(&self.cur_formation_id).unwrap(), Some(world))
     }
 
     pub fn build_player_entity_remove_notify(
@@ -403,8 +389,7 @@ impl Player {
                         .iter()
                         .map(|&role_id| {
                             let entity_id = world.get_entity_id(role_id);
-                            let _role_skin =
-                                query_components!(world, entity_id, RoleSkin).0.unwrap();
+                            let _role_skin = query_components!(world, entity_id, RoleSkin).0.unwrap();
                             FightRoleInfo {
                                 role_id,
                                 entity_id: world.get_entity_id(role_id),
