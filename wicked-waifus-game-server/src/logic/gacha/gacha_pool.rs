@@ -113,7 +113,13 @@ impl GachaPool {
         match player.role_list.get(&item_id) {
             None => {
                 if required_role_ids.contains(&item_id) {
-                    player.role_list.insert(item_id, Role::new(item_id));
+                    let role = Role::new(item_id);
+                    let role_id = role.role_id;
+                    let weapon_id = role.equip_weapon;
+                    player.role_list.insert(item_id, role);
+                    // TODO notifies player update
+                    player.inventory.add_weapon(role_id, 0, 1, 0, 0, 0, weapon_id).unwrap();
+                    // TODO notifies weapon update
                 }
             }
             Some(role) => {

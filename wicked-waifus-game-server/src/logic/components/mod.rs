@@ -19,6 +19,7 @@ mod summoner;
 mod tag;
 mod visibility;
 mod vision_skill;
+mod weapon_skin;
 
 pub use attribute::Attribute;
 pub use autonomous::Autonomous;
@@ -41,3 +42,4 @@ pub use summoner::Summoner;
 pub use tag::Tag;
 pub use visibility::Visibility;
 pub use vision_skill::VisionSkill;
+pub use weapon_skin::WeaponSkin;

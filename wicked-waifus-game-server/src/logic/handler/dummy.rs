@@ -33,7 +33,6 @@ dummy_handler! {
     ExchangeReward;
     Liveness;
     PhotoMemory;
-    WeaponSkin;
     VisionEquipGroupInfo;
     UpdatePlayStationBlockAccount;
     AdventureManual;

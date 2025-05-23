@@ -11,16 +11,16 @@ use wicked_waifus_protocol::{
     AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify,
     ControlInfoNotify, EEntityType, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify,
     EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState,
-    FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FormationRoleInfo,
-    GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify,
-    LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MapUnlockFieldNotify,
-    MonthCardDailyRewardNotify, MoonChasingTargetGetCountNotify,
-    MoonChasingTrackMoonHandbookRewardNotify, NormalItemUpdateNotify, PassiveSkillNotify,
-    PbGetRoleListNotify, PlayerAttr, PlayerAttrKey, PlayerAttrNotify, PlayerAttrType,
-    PlayerFightFormations, PlayerVarNotify, ProtocolUnit, PushContextIdNotify,
-    PushDataCompleteNotify, RoguelikeCurrencyNotify, RoleChangeUnlockNotify, RoleFavor,
-    RoleFavorListNotify, RoleMotion, RoleMotionListNotify, SettingNotify, TeleportUpdateNotify,
-    UpdateFormationNotify, UpdateGroupFormationNotify,
+    FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FlyEquipAddNotify,
+    FlySkinEquipData, GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify,
+    LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MonthCardDailyRewardNotify,
+    MoonChasingTargetGetCountNotify, MoonChasingTrackMoonHandbookRewardNotify,
+    NormalItemUpdateNotify, PassiveSkillNotify, PbGetRoleListNotify, PlayerAttr, PlayerAttrKey,
+    PlayerAttrNotify, PlayerAttrType, PlayerFightFormations, PlayerVarNotify, ProtocolUnit,
+    PushContextIdNotify, PushDataCompleteNotify, RoguelikeCurrencyNotify, RoleChangeUnlockNotify,
+    RoleFavor, RoleFavorListNotify, RoleFlyEquipNotify, RoleMotion, RoleMotionListNotify,
+    SettingNotify, TeleportUpdateNotify, UnlockSkinDataNotify, UpdateFormationNotify,
+    UpdateGroupFormationNotify,
 };
 use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
 
@@ -46,16 +46,17 @@ use crate::logic::player::player_mc_element::PlayerMcElement;
 use crate::logic::player::player_month_card::PlayerMonthCard;
 use crate::logic::player::player_teleports::{PlayerTeleport, PlayerTeleports};
 use crate::logic::player::player_tutorials::{PlayerTutorial, PlayerTutorials};
+use crate::logic::player::Element::Spectro;
 use crate::logic::{
     components::{
-        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
-        Position, Visibility, VisionSkill, SoarWingSkin
+        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, ParaglidingSkin,
+        PlayerOwnedEntityMarker, Position, SoarWingSkin, Visibility, VisionSkill, WeaponSkin,
     },
     ecs::component::ComponentContainer,
 };
 use crate::session::Session;
-use crate::{config, create_player_entity_pb, query_components};
-use crate::logic::player::Element::Spectro;
+use crate::{config, create_player_entity_pb};
+use crate::logic::player::player_unlocked_skins::PlayerUnlockedSkins;
 
 mod basic_info;
 mod explore_tools;
@@ -72,6 +73,7 @@ mod player_mc_element;
 mod player_month_card;
 mod player_teleports;
 mod player_tutorials;
+mod player_unlocked_skins;
 
 pub struct Player {
     session: Option<Arc<Session>>,
@@ -93,6 +95,7 @@ pub struct Player {
     pub map_trace: PlayerMapTrace,
     pub month_card: PlayerMonthCard,
     pub mc_element: PlayerMcElement,
+    pub unlocked_skins: PlayerUnlockedSkins,
     // Runtime
     pub world: Rc<RefCell<World>>,
     pub last_save_time: u64,
@@ -123,6 +126,10 @@ impl Player {
         self.notify(self.explore_tools.build_roulette_update_notify());
         self.notify(self.build_role_favor_list_notify());
         self.notify(self.func.build_func_open_notify());
+        self.notify(self.build_weapon_skin_notify());
+        self.notify(self.build_fly_equip_notify());
+        self.notify(self.build_role_fly_equip_notify());
+
         self.notify(InstDataNotify {
             enter_infos: vec![], // TODO: No effect in normal world, to implement for dungeon::logic()
         });
@@ -210,6 +217,11 @@ impl Player {
             RoleFormation::default_roles().iter().for_each(|&role_id| {
                 self.role_list.insert(role_id, Role::new(role_id));
             });
+        }
+        for role in self.role_list.values() {
+            self.inventory
+                .add_weapon(role.equip_weapon, 0, 1, 0, 0, 0, role.role_id)
+                .unwrap();
         }
 
         self.formation_list.insert(1, RoleFormation::default());
@@ -305,8 +317,8 @@ impl Player {
         RoleFavorListNotify {
             favor_list: self
                 .role_list
-                .iter()
-                .map(|(_, role)| RoleFavor {
+                .values()
+                .map(|role| RoleFavor {
                     role_id: role.role_id,
                     level: role.favor_level,
                     exp: role.favor_exp,
@@ -338,12 +350,73 @@ impl Player {
         }
     }
 
+    pub fn build_weapon_skin_notify(&self) -> UnlockSkinDataNotify {
+        UnlockSkinDataNotify {
+            phantom_skin_list: self.unlocked_skins.weapon_skins.iter().cloned().collect(),
+            is_login: true,
+        }
+    }
+
+    pub fn build_fly_equip_notify(&self) -> FlyEquipAddNotify {
+        FlyEquipAddNotify {
+            unlock_fly_skin_ids: self
+                .unlocked_skins
+                .fly_skins
+                .iter()
+                .chain(&self.unlocked_skins.wing_skins)
+                .cloned()
+                .collect(),
+        }
+    }
+
+    pub fn build_role_fly_equip_notify(&self) -> RoleFlyEquipNotify {
+        let merged: Vec<_> = self
+            .unlocked_skins
+            .fly_skins
+            .iter()
+            .chain(&self.unlocked_skins.wing_skins)
+            .cloned()
+            .collect();
+
+        let mut equipped_skins: HashMap<i32, Vec<i32>> = HashMap::new();
+        for role in self.role_list.values() {
+            if role.fly_skin_id != 0 {
+                equipped_skins
+                    .entry(role.fly_skin_id)
+                    .or_default()
+                    .push(role.role_id);
+            }
+            if role.wing_skin_id != 0 {
+                equipped_skins
+                    .entry(role.wing_skin_id)
+                    .or_default()
+                    .push(role.role_id);
+            }
+        }
+
+        RoleFlyEquipNotify {
+            fly_skin_equip_data: merged
+                .iter()
+                .map(|&skin| match equipped_skins.get(&skin) {
+                    Some(role_list) => FlySkinEquipData {
+                        role_ids: role_list.to_vec(),
+                        skin_id: skin,
+                    },
+                    None => FlySkinEquipData {
+                        role_ids: vec![],
+                        skin_id: skin,
+                    },
+                })
+                .collect(),
+        }
+    }
+
     pub fn build_motion_list_notify(&self) -> RoleMotionListNotify {
         RoleMotionListNotify {
             motion_list: self
                 .role_list
-                .iter()
-                .map(|(_, role)| {
+                .values()
+                .map(|role| {
                     RoleMotion {
                         role_id: role.role_id,
                         motion_ids: motion_data::iter()
@@ -404,15 +477,10 @@ impl Player {
                     fight_role_infos: cur_formation
                         .role_ids
                         .iter()
-                        .map(|&role_id| {
-                            let entity_id = world.get_entity_id(role_id);
-                            let role_skin =
-                                query_components!(world, entity_id, RoleSkin).0.unwrap();
-                            FightRoleInfo {
-                                role_id,
-                                entity_id: world.get_entity_id(role_id),
-                                on_stage_without_control: false,
-                            }
+                        .map(|&role_id| FightRoleInfo {
+                            role_id,
+                            entity_id: world.get_entity_id(role_id),
+                            on_stage_without_control: false,
                         })
                         .collect(),
                     cur_role: cur_formation.cur_role,
@@ -449,14 +517,7 @@ impl Player {
                                     tracing::warn!("Role {} not found in use role list", role_id);
                                     return Default::default();
                                 }
-                                let role = *role_map.get(&role_id).unwrap();
-                                FormationRoleInfo {
-                                    role_id: role.role_id,
-                                    max_hp: 0,
-                                    cur_hp: 0,
-                                    level: role.level,
-                                    role_skin_id: role.skin_id,
-                                }
+                                role_map.get(role_id).unwrap().to_formation_protobuf()
                             })
                             .collect(),
                         is_current: formation.is_current,
@@ -514,7 +575,7 @@ impl Player {
                 }],
             });
             self.notify(NormalItemUpdateNotify {
-                normal_item_list: self.inventory.to_normal_item_list_filtered(vec![3]),
+                normal_item_list: self.inventory.to_normal_item_list_filtered(&[3]),
                 no_tips: false,
             });
             self.notify(MonthCardDailyRewardNotify {
@@ -596,6 +657,10 @@ impl Player {
                 .mc_element
                 .map(PlayerMcElement::load_from_save)
                 .unwrap_or_default(),
+            unlocked_skins: save_data
+                .unlocked_skins
+                .map(PlayerUnlockedSkins::load_from_save)
+                .unwrap_or_default(),
             world: Rc::new(RefCell::new(World::new())),
             last_save_time: time_util::unix_timestamp(),
             quadrant_id: 0,
@@ -631,6 +696,7 @@ impl Player {
             map_trace: Some(self.map_trace.build_save_data()),
             month_card: Some(self.month_card.build_save_data()),
             mc_element: Some(self.mc_element.build_save_data()),
+            unlocked_skins: Some(self.unlocked_skins.build_save_data()),
         }
     }
 
@@ -639,12 +705,11 @@ impl Player {
     }
 
     pub fn build_role_list_notify(&self) -> PbGetRoleListNotify {
-        // TODO: There is a bug we are investigating with several resonators, this is a workaround
         PbGetRoleListNotify {
             role_list: self
                 .role_list
-                .iter()
-                .map(|(_, role)| role.to_protobuf())
+                .values()
+                .map(|role| role.to_protobuf())
                 .collect(),
         }
     }

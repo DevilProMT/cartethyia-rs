@@ -60,6 +60,9 @@ message RoleData {
   RoleStats stats = 17;
   int32 favor_level = 18;
   int32 favor_exp = 19;
+  int32 wing_skin_id = 20;
+  int32 fly_skin_id = 21;
+  int32 weapon_skin_id = 22;
 }
 
 message RoleFormationData {
@@ -135,8 +138,19 @@ message PlayerAdventureStatusData {
   repeated PlayerAdventureGlobalStatusData status = 1;
 }
 
+message PlayerInventoryWeaponData {
+  int32 id = 1;
+  int32 func_value = 2;
+  int32 level = 3;
+  int32 exp = 4;
+  int32 breach = 5;
+  int32 reson_level = 6;
+  int32 role_id = 7;
+}
+
 message PlayerInventoryData {
   map<int32, int32> items = 1;
+  map<int32, PlayerInventoryWeaponData> weapons = 2;
 }
 
 message PlayerTeleportData {
@@ -182,6 +196,13 @@ message PlayerMcElementData {
   PlayerMcElementType current_element = 2;
 }
 
+message PlayerUnlockedSkinsData {
+  repeated int32 role_skins = 1;
+  repeated int32 weapon_skins = 2;
+  repeated int32 fly_skins = 3;
+  repeated int32 wing_skins = 4;
+}
+
 message PlayerSaveData {
   PlayerBasicData basic_data = 1;
   PlayerRoleData role_data = 2;
@@ -198,4 +219,5 @@ message PlayerSaveData {
   PlayerMapTraceData map_trace = 13;
   PlayerMonthCardData month_card = 14;
   PlayerMcElementData mc_element = 15;
+  PlayerUnlockedSkinsData unlocked_skins = 16;
 }

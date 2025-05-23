@@ -1,4 +1,9 @@
-use wicked_waifus_protocol::{ErrorCode, SceneLoadingFinishRequest, SceneLoadingFinishResponse, SceneTraceRequest, SceneTraceResponse, UpdateSceneDateRequest, UpdateSceneDateResponse, AccessPathTimeServerConfigRequest, AccessPathTimeServerConfigResponse, PlayerHeadDataRequest, PlayerHeadDataResponse, UnlockRoleSkinListRequest, UnlockRoleSkinListResponse, JsPatchNotify};
+use wicked_waifus_protocol::{
+    AccessPathTimeServerConfigRequest, AccessPathTimeServerConfigResponse, ErrorCode,
+    JsPatchNotify, PlayerHeadDataRequest, PlayerHeadDataResponse, SceneLoadingFinishRequest,
+    SceneLoadingFinishResponse, SceneTraceRequest, SceneTraceResponse, UpdateSceneDateRequest,
+    UpdateSceneDateResponse,
+};
 
 const WATER_MASK: &str = include_str!("../../../scripts/watermask-disable.js");
 const UID_FIX: &str = include_str!("../../../scripts/uidfix.js");
@@ -64,15 +69,4 @@ pub fn on_player_head_data_request(
 ) {
     // TODO: port this from golang
     response.pi = vec![];
-}
-
-pub fn on_unlock_role_skin_list_request(
-    _player: &Player,
-    _request: UnlockRoleSkinListRequest,
-    response: &mut UnlockRoleSkinListResponse,
-) {
-    // TODO: port this from golang
-    response.role_skin_list = wicked_waifus_data::role_skin_data::iter()
-        .map(|data| data.id)
-        .collect::<Vec<_>>();
 }

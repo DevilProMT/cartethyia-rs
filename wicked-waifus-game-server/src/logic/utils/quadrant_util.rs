@@ -3,7 +3,7 @@ use std::sync::OnceLock;
 
 use wicked_waifus_data::LevelEntityConfigData;
 
-struct StaticConfig {
+pub(crate) struct StaticConfig {
     edge_size: f32,
     edge_check: f32,
 }

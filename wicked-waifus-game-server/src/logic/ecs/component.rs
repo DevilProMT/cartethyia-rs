@@ -44,6 +44,7 @@ impl_component_container! {
     Summoner;
     SoarWingSkin;
     ParaglidingSkin;
+    WeaponSkin;
 }
 
 pub trait Component {

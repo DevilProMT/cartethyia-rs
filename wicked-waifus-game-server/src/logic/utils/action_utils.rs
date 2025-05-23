@@ -229,7 +229,7 @@ fn collect_action(player: &mut Player,
                 .collect::<Vec<_>>();
             let updated_items = player.inventory.add_items(&usages);
             let normal_item_list = player.inventory.to_normal_item_list_filtered(
-                updated_items.keys().cloned().collect::<Vec<i32>>()
+                &updated_items.keys().cloned().collect::<Vec<i32>>()
             );
             player.notify(NormalItemUpdateNotify { normal_item_list, no_tips: false });
             // UpdateHandBookActiveStateMapNotify

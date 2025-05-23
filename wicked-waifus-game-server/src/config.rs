@@ -37,12 +37,18 @@ pub struct DefaultUnlocks {
     pub unlock_all_roles_max_level: bool,
     pub unlock_all_roles_all_sequences: bool,
     pub unlock_all_mc_elements: bool,
-    pub unlock_all_weapons: bool, // TODO:
+    pub unlock_all_weapons: bool,
+    pub unlock_all_weapons_max_level: bool,
+    pub unlock_all_weapons_all_reson: bool,
     pub unlock_all_adventures: bool,
     pub unlock_all_functions: bool,
     pub unlock_all_guides: bool,
     pub unlock_all_tutorials: bool,
     pub unlock_all_teleporter: bool,
+    pub unlock_all_role_skins: bool,
+    pub unlock_all_weapon_skins: bool,
+    pub unlock_all_fly_skins: bool,
+    pub unlock_all_wing_skins: bool,
 }
 
 impl TomlConfig for ServiceConfig {

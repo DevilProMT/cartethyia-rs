@@ -12,12 +12,11 @@ pub fn on_normal_item_request(
 }
 
 pub fn on_weapon_item_request(
-    _player: &mut Player,
+    player: &mut Player,
     _: WeaponItemRequest,
-    _response: &mut WeaponItemResponse,
+    response: &mut WeaponItemResponse,
 ) {
-    // TODO: Implement this
-    tracing::warn!("Unhandled WeaponItemRequest");
+    response.weapon_item_list = player.inventory.to_weapon_item_list();
 }
 
 pub fn on_phantom_item_request(

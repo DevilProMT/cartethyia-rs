@@ -9,7 +9,7 @@ use wicked_waifus_data::{
     blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
 };
 
-use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, SoarWingSkin, StateTag, Tag};
+use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, ParaglidingSkin, SoarWingSkin, StateTag, Tag, WeaponSkin};
 use crate::logic::ecs::entity::EntityBuilder;
 use crate::logic::ecs::world::World;
 use crate::logic::math::Transform;
@@ -87,7 +87,13 @@ macro_rules! create_player_entity_pb {
                     skin_id: role.skin_id,
                 }))
                 .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
-                    skin_id: 84000001,
+                    skin_id: role.fly_skin_id,
+                }))
+                .with(ComponentContainer::ParaglidingSkin(ParaglidingSkin {
+                    skin_id: role.wing_skin_id,
+                }))
+                .with(ComponentContainer::WeaponSkin(WeaponSkin {
+                    skin_id: role.weapon_skin_id,
                 }))
                 .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
@@ -181,7 +187,13 @@ pub fn add_player_entities(player: &Player) {
                     skin_id: role.skin_id,
                 }))
                 .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
-                    skin_id: 84000001,
+                    skin_id: role.fly_skin_id,
+                }))
+                .with(ComponentContainer::ParaglidingSkin(ParaglidingSkin {
+                    skin_id: role.wing_skin_id,
+                }))
+                .with(ComponentContainer::WeaponSkin(WeaponSkin {
+                    skin_id: role.weapon_skin_id, // TODO: Is this kept on weapon change
                 }))
                 .with(ComponentContainer::FightBuff(buf_manager))
                 .build();
@@ -243,11 +255,10 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
                 world.get_world_entity(),
                 PlayerOwnedEntityMarker,
                 OwnerPlayer,
-                EntityConfig,
-                RoleSkin
+                EntityConfig
             )
             .into_iter()
-            .filter(|(_, _, owner, _, _)| owner.0 == sp.player_id);
+            .filter(|(_, _, owner, _)| owner.0 == sp.player_id);
 
             ScenePlayerInformation {
                 cur_role: cur_role_id,
@@ -264,7 +275,7 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
                     cur_role: cur_role_id,
                     // is_retain: true,
                     fight_role_infos: active_characters
-                        .map(|(id, _, _, conf, role_skin)| FightRoleInfo {
+                        .map(|(id, _, _, conf)| FightRoleInfo {
                             entity_id: id.into(),
                             role_id: conf.config_id,
                             on_stage_without_control: false,
