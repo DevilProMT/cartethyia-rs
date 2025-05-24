@@ -435,14 +435,15 @@ impl Player {
         }
     }
 
-    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>) -> EntityAddNotify {
+    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>, world: &mut WorldEntity) -> EntityAddNotify {
         create_player_entity_pb!(
             role_list,
             self.basic_info.cur_map_id,
             self,
             self.basic_info.id,
             self.location.position.clone(),
-            self.explore_tools
+            self.explore_tools,
+            world
         )
     }
 

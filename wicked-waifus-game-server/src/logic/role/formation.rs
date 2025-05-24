@@ -29,7 +29,7 @@ impl RoleFormation {
         RoleFormationData {
             formation_id: self.id,
             cur_role: self.cur_role,
-            role_id_list: self.role_ids.iter().map(|&role_id| role_id).collect(),
+            role_id_list: self.role_ids.iter().copied().collect(),
             is_current: self.is_current,
         }
     }

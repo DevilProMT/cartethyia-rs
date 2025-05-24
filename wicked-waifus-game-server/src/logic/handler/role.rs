@@ -100,7 +100,7 @@ pub fn on_update_formation_request(
 
             if !added_roles.is_empty() {
                 // add new roles
-                player.notify(player.build_player_entity_add_notify(added_roles));
+                player.notify(player.build_player_entity_add_notify(added_roles, world));
             }
 
             // send update group formation notify

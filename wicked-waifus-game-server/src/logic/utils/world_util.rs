@@ -27,29 +27,26 @@ use crate::query_with;
 
 #[macro_export]
 macro_rules! create_player_entity_pb {
-    ($role_list:expr, $cur_map_id:expr, $player:expr, $player_id:expr, $position:expr, $explore_tools:expr) => {{
-        let mut world_ref = $player.world.borrow_mut();
-        let world = world_ref.get_mut_world_entity();
-
+    ($role_list:expr, $cur_map_id:expr, $player:expr, $player_id:expr, $position:expr, $explore_tools:expr, $world:expr) => {{
         let current_formation = $player.formation_list.get(&$player.cur_formation_id).unwrap();
         let cur_role_id = current_formation.cur_role;
 
         let mut pbs = Vec::new();
 
         for role in $role_list {
-            let entity = world.create_entity(
+            let entity = $world.create_entity(
                 role.role_id,
                 EEntityType::Player.into(),
                 $cur_map_id,
             );
             // Once per character buffs are implemented, add a mut on role_buffs
-            let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id as i64);
+            let fight_buff_infos = $world.generate_role_permanent_buffs(entity.entity_id as i64);
             let buf_manager = FightBuff {
                 fight_buff_infos,
                 list_buff_effect_cd: vec![],
             };
 
-            let entity = world.create_builder(entity)
+            let entity = $world.create_builder(entity)
                 .with(ComponentContainer::PlayerOwnedEntityMarker(PlayerOwnedEntityMarker {
                     entity_type: EEntityType::Player,
                 }))
@@ -103,7 +100,7 @@ macro_rules! create_player_entity_pb {
                 ..Default::default()
             };
 
-            world
+            $world
                 .get_entity_components(entity.entity_id)
                 .into_iter()
                 .for_each(|comp| comp.set_pb_data(&mut pb));

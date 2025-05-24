@@ -55,7 +55,7 @@ wicked-waifus-network = { path = "wicked-waifus-network" }
 wicked-waifus-protocol-internal = { path = "wicked-waifus-protocol-internal" }
 wicked-waifus-protokey = { path = "wicked-waifus-protokey" }
 
-wicked-waifus-protocol = { git = "https://git.xeondev.com/wickedwaifus/wicked-waifus-proto" }
+wicked-waifus-protocol = { git = "https://git.xeondev.com/wickedwaifus/wicked-waifus-proto", features = ["debug"] }
 wicked-waifus-protocol-derive = { git = "https://git.xeondev.com/wickedwaifus/wicked-waifus-proto" }
 
 [profile.release]
