@@ -30,9 +30,9 @@ impl Transform {
     }
 
     pub fn set_rotation_from_protobuf(&mut self, rotator: &Rotator) {
-        self.rotation.x = rotator.pitch;
-        self.rotation.y = rotator.yaw;
-        self.rotation.z = rotator.roll;
+        self.rotation.x = rotator.roll;
+        self.rotation.y = rotator.pitch;
+        self.rotation.z = rotator.yaw;
     }
 
     pub fn load_from_save(data: TransformData) -> Self {
