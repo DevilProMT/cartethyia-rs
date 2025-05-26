@@ -220,4 +220,16 @@ message PlayerSaveData {
   PlayerMonthCardData month_card = 14;
   PlayerMcElementData mc_element = 15;
   PlayerUnlockedSkinsData unlocked_skins = 16;
+  repeated int32 used_incr_ids = 17;
+  repeated RefreshVisionEquipGroupData vision_equip_groups = 18;
+}
+
+message RefreshVisionEquipGroupData {
+    repeated int32 inc_id = 1;
+    string name = 2;
+}
+
+message RolePhantomEquipInfo {
+    int32 role_id = 1;
+    repeated int32 phantom_item_incr_id = 2;
 }
