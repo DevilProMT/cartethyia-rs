@@ -1,5 +1,18 @@
 use serde::Deserialize;
-use crate::GachaViewTypeInfoId;
+use serde_repr::Deserialize_repr;
+
+#[derive(Deserialize_repr, PartialEq, Debug, Copy, Clone)]
+#[repr(i32)]
+pub enum GachaViewTypeInfoId {
+    NoviceConvene = 1,
+    FeaturedResonatorConvene = 2,
+    FeaturedWeaponConvene = 3,
+    StandardResonatorConvene = 4,
+    StandardWeaponConvene = 5,
+    BeginnersChoiceConvene = 6,
+    MultipleChoiceResonatorConvene = 7,
+    MultipleChoiceWeaponConvene = 8,
+}
 
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]

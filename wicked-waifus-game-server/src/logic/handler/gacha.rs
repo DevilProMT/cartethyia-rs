@@ -3,7 +3,7 @@ use std::sync::{Mutex, OnceLock};
 use std::time::UNIX_EPOCH;
 
 use wicked_waifus_data::{gacha_pool_data, gacha_view_info_data, text_map_data};
-use wicked_waifus_data::GachaViewTypeInfoId::{BeginnersChoiceConvene, NoviceConvene};
+use wicked_waifus_data::gacha_view_info_data::GachaViewTypeInfoId::{BeginnersChoiceConvene, NoviceConvene};
 use wicked_waifus_protocol::{ErrorCode, GachaConsume, GachaInfo, GachaInfoRequest, GachaInfoResponse,
                            GachaPoolInfo, GachaRequest, GachaResponse, GachaResult, GachaReward,
                            GachaUsePoolRequest, GachaUsePoolResponse, WeaponItem};

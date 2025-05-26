@@ -2,7 +2,14 @@ use std::collections::HashMap;
 
 use serde::Deserialize;
 
-use crate::{EntranceEntityData, VectorData};
+use crate::VectorData;
+
+#[derive(Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct EntranceEntityData {
+    pub dungeon_id: i32,
+    pub entrance_entity_id: i64,
+}
 
 #[derive(Deserialize)]
 #[cfg_attr(feature = "strict_json_fields", serde(deny_unknown_fields))]

@@ -2,7 +2,7 @@ use rand::prelude::IndexedRandom;
 use rand::Rng;
 use wicked_waifus_protocol::{ErrorCode, GachaResult, GachaReward};
 
-use wicked_waifus_data::GachaViewTypeInfoId::{
+use wicked_waifus_data::gacha_view_info_data::GachaViewTypeInfoId::{
     BeginnersChoiceConvene, FeaturedResonatorConvene, FeaturedWeaponConvene,
     MultipleChoiceResonatorConvene, MultipleChoiceWeaponConvene, NoviceConvene,
     StandardResonatorConvene, StandardWeaponConvene,

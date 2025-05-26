@@ -1,7 +1,7 @@
 use std::time::SystemTime;
 
-use wicked_waifus_data::GachaViewTypeInfoId;
-use wicked_waifus_data::GachaViewTypeInfoId::{
+use wicked_waifus_data::gacha_view_info_data::GachaViewTypeInfoId;
+use wicked_waifus_data::gacha_view_info_data::GachaViewTypeInfoId::{
     BeginnersChoiceConvene, FeaturedResonatorConvene, FeaturedWeaponConvene,
     MultipleChoiceResonatorConvene, MultipleChoiceWeaponConvene, NoviceConvene,
     StandardResonatorConvene, StandardWeaponConvene,

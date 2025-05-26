@@ -5,7 +5,7 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 
 use wicked_waifus_data::gacha_view_info_data;
-use wicked_waifus_data::GachaViewTypeInfoId::{
+use wicked_waifus_data::gacha_view_info_data::GachaViewTypeInfoId::{
     BeginnersChoiceConvene, FeaturedResonatorConvene, FeaturedWeaponConvene,
     MultipleChoiceResonatorConvene, MultipleChoiceWeaponConvene, NoviceConvene,
     StandardResonatorConvene, StandardWeaponConvene,
