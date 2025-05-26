@@ -47,8 +47,6 @@ impl_component_container! {
     Visibility;
     VisionSkill;
     WeaponSkin;
-    CharacterAttach;
-    LogicState;
 }
 
 pub trait Component {
