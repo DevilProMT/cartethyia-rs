@@ -142,7 +142,7 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
             player.world_owner_id = player_id;
             let mut world = state.worlds.entry(player_id).or_insert_with(|| {
                 let mut world = World::new();
-                world.world_entitys.insert(
+                world.world_entities.insert(
                     player.basic_info.cur_map_id,
                     WorldEntity::default(),
                 );

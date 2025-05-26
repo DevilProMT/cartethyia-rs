@@ -59,12 +59,10 @@ pub fn on_explore_skill_roulette_set_request(
         false => {
             ctx.player.explore_tools.roulette = request
                 .skill_roulettes
-                .get(0)
+                .first()
                 .unwrap()
                 .skill_ids
-                .iter()
-                .map(|&skill_id| skill_id)
-                .collect::<Vec<i32>>()
+                .to_vec()
                 .as_slice()
                 .try_into()
                 .unwrap();

@@ -199,7 +199,7 @@ pub fn on_entity_interact_request(
         let mut check = true;
         if let Some(conditions) = option.condition {
             for element in conditions.conditions {
-                check = check_condition(ctx, request.entity_id, &entity, template_config, element);
+                check = check_condition(ctx, request.entity_id, entity, template_config, element);
                 if !check {
                     break;
                 }
@@ -213,7 +213,7 @@ pub fn on_entity_interact_request(
                             perform_action(
                                 ctx,
                                 request.entity_id,
-                                &entity,
+                                entity,
                                 template_config,
                                 action,
                             );

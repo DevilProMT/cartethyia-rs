@@ -1,5 +1,5 @@
-use wicked_waifus_protocol::{EntityComponentPb, LogicStateComponentPb};
 use wicked_waifus_protocol::entity_component_pb::ComponentPb;
+use wicked_waifus_protocol::{EntityComponentPb, LogicStateComponentPb};
 
 use crate::logic::ecs::component::Component;
 

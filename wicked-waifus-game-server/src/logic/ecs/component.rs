@@ -23,27 +23,29 @@ macro_rules! impl_component_container {
 }
 
 impl_component_container! {
-    Position;
-    EntityConfig;
-    OwnerPlayer;
-    Visibility;
     Attribute;
-    PlayerOwnedEntityMarker;
-    Movement;
-    Equip;
-    VisionSkill;
-    MonsterAi;
-    Fsm;
-    RoleSkin;
-    FightBuff;
-    StateTag;
-    Tag;
     Autonomous;
-    Interact;
+    CharacterAttach;
     Concomitant;
-    Summoner;
-    SoarWingSkin;
+    EntityConfig;
+    Equip;
+    FightBuff;
+    Fsm;
+    Interact;
+    LogicState;
+    MonsterAi;
+    Movement;
+    OwnerPlayer;
     ParaglidingSkin;
+    PlayerOwnedEntityMarker;
+    Position;
+    RoleSkin;
+    SoarWingSkin;
+    StateTag;
+    Summoner;
+    Tag;
+    Visibility;
+    VisionSkill;
     WeaponSkin;
     CharacterAttach;
     LogicState;
