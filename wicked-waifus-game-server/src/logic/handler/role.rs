@@ -120,7 +120,11 @@ pub fn on_update_formation_request(
                 rf.is_current = false;
             }
 
-            add_player_entities(player, player.formation_list.get(&formation_id).unwrap(), world);
+            let pbs = add_player_entities(player, world);
+            player.notify(EntityAddNotify {
+                entity_pbs: pbs,
+                remove_tag_ids: true,
+            });
 
             // send update group formation notify
             player.notify(player.build_update_group_formation_notify(

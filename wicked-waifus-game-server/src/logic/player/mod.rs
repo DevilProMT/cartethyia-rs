@@ -10,9 +10,7 @@ use wicked_waifus_protocol::{
 };
 use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData, RefreshVisionEquipGroupData};
 
-use super::ecs::world::World;
 use super::role::{Role, RoleFormation};
-use super::utils::world_util::add_player_entities;
 use crate::logic::ecs::world::WorldEntity;
 use crate::logic::player::basic_info::PlayerBasicInfo;
 use crate::logic::player::explore_tools::ExploreTools;
@@ -263,7 +261,7 @@ impl Player {
             }
 
             if !rf.role_ids.contains(&rf.cur_role) {
-                rf.cur_role = *rf.role_ids.iter().nth(0).unwrap();
+                rf.cur_role = *rf.role_ids.first().unwrap();
             }
         }
     }
@@ -568,7 +566,7 @@ impl Player {
 
             let mut used_incr_ids = HashSet::new();
             for role in &role_data.role_list {
-                for (_, &inc_id) in &role.phantom_map {
+                for &inc_id in role.phantom_map.values() {
                     if inc_id != 0 {
                         used_incr_ids.insert(inc_id);
                     }
@@ -661,9 +659,7 @@ impl Player {
             basic_data: Some(self.basic_info.build_save_data()),
             role_data: Some(PlayerRoleData {
                 role_list: self
-                    .role_list
-                    .iter()
-                    .map(|(_, role)| role.build_save_data())
+                    .role_list.values().map(|role| role.build_save_data())
                     .collect(),
                 role_formation_list: self
                     .formation_list

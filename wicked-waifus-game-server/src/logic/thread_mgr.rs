@@ -161,7 +161,7 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
                 world: &mut world,
             };
             
-            world_util::add_player_entities(ctx.player, ctx.player.formation_list.get(&ctx.player.cur_formation_id).unwrap(), ctx.world.get_mut_world_entity());
+            world_util::add_player_entities(ctx.player, ctx.world.get_mut_world_entity());
             let scene_info = world_util::build_scene_information(&mut ctx);
 
             ctx.player.notify(SilenceNpcNotify::default());

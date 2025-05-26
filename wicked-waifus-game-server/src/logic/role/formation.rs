@@ -7,9 +7,8 @@ pub struct RoleFormation {
     pub is_current: bool,
 }
 
-// Will be updated every version
-// const DEFAULT_FORMATION: &[i32] = &[5101, 1407, 1507];
-const DEFAULT_FORMATION: &[i32] = &[1409, 1506, 1207];
+// Will be updated every version 
+const DEFAULT_FORMATION: &[i32] = &[1409, 1507, 1207];
 
 impl RoleFormation {
     pub fn default_roles() -> &'static [i32] {

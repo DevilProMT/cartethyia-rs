@@ -12,7 +12,6 @@ use crate::logic::ecs::entity::{Entity, EntityBuilder};
 use crate::logic::ecs::world::{World, WorldEntity};
 use crate::logic::math::Transform;
 use crate::logic::player::Player;
-use crate::logic::role::RoleFormation;
 use crate::logic::utils::{entity_serializer, tag_utils};
 use crate::logic::utils::growth_utils::get_monster_props_by_level;
 use crate::logic::{
@@ -122,18 +121,17 @@ pub fn summon_concomitant(
 
 // }
 
-pub fn add_player_entities(player: &Player, formation: &RoleFormation, world: &mut WorldEntity) {
-    let role_vec = formation
+pub fn add_player_entities(player: &Player, world: &mut WorldEntity) -> Vec<EntityPb> {
+    let current_formation = player.formation_list.get(&player.cur_formation_id).unwrap();
+
+    let role_vec = current_formation
         .role_ids
         .iter()
         .map(|role_id| player.role_list.get(role_id).unwrap())
         .collect::<Vec<_>>();
-
-    tracing::info!("adding player entity for formation {:#?}", formation.role_ids);
-    let cur_role_id = formation.cur_role;
+    let cur_role_id = current_formation.cur_role;
 
     let mut pbs = Vec::new();
-
     for role in role_vec {
         let entity = world.create_entity(
             role.role_id,
@@ -141,38 +139,49 @@ pub fn add_player_entities(player: &Player, formation: &RoleFormation, world: &m
             player.basic_info.cur_map_id,
         );
 
-        let mut fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id, role.role_id);
+        let mut fight_buff_infos =
+            world.generate_role_permanent_buffs(entity.entity_id, role.role_id);
         let mut concomitant_buffs = vec![];
 
         let mut concomitants: Vec<i64> = vec![];
         let mut concom_pbs = Vec::new();
 
-        if let Some(role_skin_data) = wicked_waifus_data::role_skin_data::iter()
-            .find(|r| r.role_id == role.role_id)
+        if let Some(role_skin_data) =
+            wicked_waifus_data::role_skin_data::iter().find(|r| r.role_id == role.role_id)
         {
-            if let Some(role_name) = role_skin_data
-                .ui_scene_performance_abp
-                .split('/')
-                .nth(6)
-            {
-                for model_config in wicked_waifus_data::model_config_preload_data::iter().filter(|cfg| {
-                    cfg.actor_class_path.starts_with("/Game/Aki/Character/Monster/Summon/")
-                        && cfg.actor_class_path.to_lowercase().contains(&role_name.to_lowercase())
-                }) {
-                    let blueprint_config = blueprint_config_data::iter()
-                        .find(|(_, r)| r.model_id == model_config.id);
+            if let Some(role_name) = role_skin_data.ui_scene_performance_abp.split('/').nth(6) {
+                for model_config in
+                    wicked_waifus_data::model_config_preload_data::iter().filter(|cfg| {
+                        cfg.actor_class_path
+                            .starts_with("/Game/Aki/Character/Monster/Summon/")
+                            && cfg
+                                .actor_class_path
+                                .to_lowercase()
+                                .contains(&role_name.to_lowercase())
+                    })
+                {
+                    let blueprint_config =
+                        blueprint_config_data::iter().find(|(_, r)| r.model_id == model_config.id);
 
-                    let summon_cfg = summon_cfg_data::get(&blueprint_config.unwrap().1.blueprint_type); // unwrap cuz it will always return afaik
-                    if summon_cfg.is_none(){
-                        continue
+                    let summon_cfg =
+                        summon_cfg_data::get(&blueprint_config.unwrap().1.blueprint_type); // unwrap cuz it will always return afaik
+                    if summon_cfg.is_none() {
+                        continue;
                     };
 
-                    let template_cfg = wicked_waifus_data::template_config_data::iter().find(|cfg| {
-                        cfg.1.blueprint_type == summon_cfg.unwrap().blueprint_type
-                    }).unwrap().1;
+                    let template_cfg = wicked_waifus_data::template_config_data::iter()
+                        .find(|cfg| cfg.1.blueprint_type == summon_cfg.unwrap().blueprint_type)
+                        .unwrap()
+                        .1;
 
                     for _ in 0..get_concom_count(role.role_id).unwrap_or(1) {
-                        let (concomitant, buffs) = summon_concomitant(player, world, template_cfg, summon_cfg.unwrap(), entity.entity_id as i64);
+                        let (concomitant, buffs) = summon_concomitant(
+                            player,
+                            world,
+                            template_cfg,
+                            summon_cfg.unwrap(),
+                            entity.entity_id as i64,
+                        );
                         let mut pb = EntityPb {
                             id: concomitant.entity_id as i64,
                             ..Default::default()
@@ -209,13 +218,12 @@ pub fn add_player_entities(player: &Player, formation: &RoleFormation, world: &m
 
         concomitant_buffs.sort_by_key(|b| b.buff_id);
         concomitant_buffs.dedup_by(|x, z| x.buff_id == z.buff_id);
-        fight_buff_infos.retain(|buff| !concomitant_buffs.iter().any(|b| b.buff_id == buff.buff_id));
-
+        fight_buff_infos
+            .retain(|buff| !concomitant_buffs.iter().any(|b| b.buff_id == buff.buff_id));
         let buf_manager = FightBuff {
             fight_buff_infos,
-            list_buff_effect_cd: vec![]
+            list_buff_effect_cd: vec![],
         };
-
         let entity = world
             .create_builder(entity)
             .with(ComponentContainer::PlayerOwnedEntityMarker(
@@ -260,7 +268,13 @@ pub fn add_player_entities(player: &Player, formation: &RoleFormation, world: &m
                 skin_id: role.skin_id,
             }))
             .with(ComponentContainer::SoarWingSkin(SoarWingSkin {
-                skin_id: 84000001,
+                skin_id: role.fly_skin_id,
+            }))
+            .with(ComponentContainer::ParaglidingSkin(ParaglidingSkin {
+                skin_id: role.wing_skin_id,
+            }))
+            .with(ComponentContainer::WeaponSkin(WeaponSkin {
+                skin_id: role.weapon_skin_id, // TODO: Is this kept on weapon change
             }))
             .with(ComponentContainer::FightBuff(buf_manager))
             .with(ComponentContainer::Concomitant(Concomitant {
@@ -280,18 +294,15 @@ pub fn add_player_entities(player: &Player, formation: &RoleFormation, world: &m
             .into_iter()
             .for_each(|comp| comp.set_pb_data(&mut pb));
         pbs.push(pb);
-        
+
         tracing::debug!(
             "created player entity, id: {}, role_id: {}",
             entity.entity_id,
             role.role_id
         );
     }
-
-    player.notify(EntityAddNotify {
-        entity_pbs: pbs,
-        remove_tag_ids: true,
-    });
+    
+    pbs
 }
 
 pub fn build_scene_information(ctx: &mut NetContext) -> SceneInformation {

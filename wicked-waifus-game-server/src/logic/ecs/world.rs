@@ -7,6 +7,7 @@ use std::collections::hash_map::{Keys, Values};
 use std::collections::HashMap;
 use wicked_waifus_protocol::FightBuffInformation;
 
+#[derive(Default)]
 pub struct WorldEntity {
     components: HashMap<i32, Vec<RefCell<ComponentContainer>>>,
     entity_manager: EntityManager,
@@ -119,12 +120,4 @@ impl WorldEntity {
     }
 }
 
-impl Default for WorldEntity {
-    fn default() -> Self {
-        Self {
-            components: HashMap::new(),
-            entity_manager: EntityManager::default(),
-            buff_manager: BufManager::default(),
-        }
-    }
-}
+
