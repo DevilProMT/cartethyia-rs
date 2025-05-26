@@ -1,7 +1,5 @@
 pub use in_world_player::InWorldPlayer;
-use std::cell::RefCell;
 use std::collections::HashMap;
-use std::rc::Rc;
 use std::sync::Arc;
 use wicked_waifus_commons::time_util;
 use wicked_waifus_data::motion_data;
@@ -24,10 +22,7 @@ use wicked_waifus_protocol::{
 };
 use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
 
-use super::{
-    ecs::world::World,
-    role::{Role, RoleFormation},
-};
+use super::role::{Role, RoleFormation};
 use crate::logic::components::RoleSkin;
 use crate::logic::ecs::world::WorldEntity;
 use crate::logic::player::basic_info::PlayerBasicInfo;
@@ -97,7 +92,7 @@ pub struct Player {
     pub mc_element: PlayerMcElement,
     pub unlocked_skins: PlayerUnlockedSkins,
     // Runtime
-    pub world: Rc<RefCell<World>>,
+    pub world_owner_id: i32,
     pub last_save_time: u64,
     pub quadrant_id: u64,
 }
@@ -662,7 +657,7 @@ impl Player {
                 .unlocked_skins
                 .map(PlayerUnlockedSkins::load_from_save)
                 .unwrap_or_default(),
-            world: Rc::new(RefCell::new(World::new())),
+            world_owner_id: 0,
             last_save_time: time_util::unix_timestamp(),
             quadrant_id: 0,
         }

@@ -3,13 +3,11 @@ use wicked_waifus_protocol::{EEntityType, EntityPb, PlayerSceneAoiData};
 use std::collections::HashSet;
 
 use crate::logic::components::Visibility;
-use crate::logic::player::Player;
 use crate::{modify_component, query_hn_with};
+use crate::logic::thread_mgr::NetContext;
 
-pub fn build_scene_add_on_init_data(player: &Player) -> PlayerSceneAoiData {
-    let mut world_ref = player.world.borrow_mut();
-    let world = world_ref.get_mut_world_entity();
-
+pub fn build_scene_add_on_init_data(ctx: &mut NetContext) -> PlayerSceneAoiData {
+    let world = ctx.world.get_mut_world_entity();
     let entities = query_hn_with!(world, PlayerOwnedEntityMarker)
         .into_iter()
         .map(|(entity_id, _)| {
@@ -44,9 +42,9 @@ pub fn build_scene_add_on_init_data(player: &Player) -> PlayerSceneAoiData {
                         world.get_entity_components(entity_id),
                         Visibility,
                         |vis: &mut Visibility| {
-                            let cur_role_id = player
+                            let cur_role_id = ctx.player
                                 .formation_list
-                                .get(&player.cur_formation_id)
+                                .get(&ctx.player.cur_formation_id)
                                 .unwrap()
                                 .cur_role;
                             (vis.is_visible, vis.is_actor_visible) = if config_id == cur_role_id {

@@ -1,9 +1,9 @@
 use wicked_waifus_protocol::{MailBind, MailBindInfoRequest, MailBindInfoResponse};
 
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 
 pub fn on_mail_bind_info_request(
-    _: &Player,
+    _: &NetContext,
     _: MailBindInfoRequest,
     response: &mut MailBindInfoResponse,
 ) {

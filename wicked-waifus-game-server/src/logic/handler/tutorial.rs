@@ -4,14 +4,15 @@ use wicked_waifus_protocol::{
     TutorialReceiveResponse, TutorialUnlockRequest, TutorialUnlockResponse,
 };
 
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 
 pub fn on_tutorial_info_request(
-    player: &mut Player,
+    ctx: &NetContext,
     _: TutorialInfoRequest,
     response: &mut TutorialInfoResponse,
 ) {
-    response.unlock_list = player
+    response.unlock_list = ctx
+        .player
         .tutorials
         .tutorials
         .iter()
@@ -24,7 +25,7 @@ pub fn on_tutorial_info_request(
 }
 
 pub fn on_tutorial_receive_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: TutorialReceiveRequest,
     response: &mut TutorialReceiveResponse,
 ) {
@@ -35,12 +36,13 @@ pub fn on_tutorial_receive_request(
         return;
     };
 
-    let Some(tutorial) = player
+    let Some(tutorial) = ctx
+        .player
         .tutorials
         .tutorials
         .iter()
-        .find(|tutorial| tutorial.id == request.id) else {
-
+        .find(|tutorial| tutorial.id == request.id)
+    else {
         response.error_code = ErrorCode::GuideTutorialNotUnlock.into();
         return;
     };
@@ -51,7 +53,10 @@ pub fn on_tutorial_receive_request(
     }
 
     // TODO: Search the rewards in drop_package
-    tracing::debug!("Tutorial receive request with drop: {}", tutorial_data.drop_id);
+    tracing::debug!(
+        "Tutorial receive request with drop: {}",
+        tutorial_data.drop_id
+    );
 
     // TODO: Fill in the item map
     response.error_code = ErrorCode::Success.into();
@@ -59,7 +64,7 @@ pub fn on_tutorial_receive_request(
 }
 
 pub fn on_tutorial_unlock_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: TutorialUnlockRequest,
     response: &mut TutorialUnlockResponse,
 ) {
@@ -70,7 +75,8 @@ pub fn on_tutorial_unlock_request(
         return;
     };
 
-    if let Some(tutorial) = player
+    if let Some(tutorial) = ctx
+        .player
         .tutorials
         .tutorials
         .iter()
@@ -84,7 +90,7 @@ pub fn on_tutorial_unlock_request(
         return;
     }
 
-    let tutorial = player.unlock_tutorial(request.id);
+    let tutorial = ctx.player.unlock_tutorial(request.id);
     response.un_lock_info = Some(TutorialInfo {
         id: tutorial.id,
         create_time: tutorial.create_time,

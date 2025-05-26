@@ -1,7 +1,6 @@
 use wicked_waifus_commons::time_util;
 use wicked_waifus_protocol_internal::PlayerSaveData;
 use wicked_waifus_protocol::{message::Message, AfterJoinSceneNotify, EnterGameResponse, JoinSceneNotify, SilenceNpcNotify, TransitionOptionPb};
-use std::collections::hash_map::Entry::Vacant;
 use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
@@ -122,6 +121,11 @@ fn logic_thread_func(receiver: mpsc::Receiver<LogicInput>, load: Arc<AtomicUsize
     }
 }
 
+pub struct NetContext<'logic> {
+    pub player: &'logic mut Player,
+    pub world: &'logic mut World,
+}
+
 fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
     match input {
         LogicInput::AddPlayer {
@@ -130,64 +134,56 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
             session,
             player_save_data,
         } => {
-            let (player, is_player) = if let Vacant(e) = state.players.entry(player_id) {
-                (
-                    e.insert(RefCell::new(Player::load_from_save(player_save_data))),
-                    true,
-                )
-            } else {
-                if let Some(player) = state.players.get_mut(&player_id) {
-                    (player, false)
-                } else {
-                    tracing::warn!("logic_thread: get player requested, but player {player_id} with data doesn't exist");
-                    return;
-                }
-            };
+            let mut player = state.players.entry(player_id).or_insert_with(|| {
+                RefCell::new(Player::load_from_save(player_save_data))
+            }).borrow_mut();
 
-            let mut player = player.borrow_mut();
-            if is_player {
-                player
-                    .world
-                    .borrow_mut()
-                    .world_entitys
-                    .insert(player.basic_info.cur_map_id, WorldEntity::default());
-                state.worlds.insert(player_id, player.world.clone());
-            }
+            // TODO: shall we search in coop?
+            player.world_owner_id = player_id;
+            let mut world = state.worlds.entry(player_id).or_insert_with(|| {
+                let mut world = World::new();
+                world.world_entitys.insert(
+                    player.basic_info.cur_map_id,
+                    WorldEntity::default(),
+                );
+                Rc::new(RefCell::new(world))
+            }).borrow_mut();
 
             player.init();
             player.set_session(session);
             player.respond(EnterGameResponse::default(), enter_rpc_id);
             player.notify_general_data();
 
-            player
-                .world
-                .borrow_mut()
-                .set_in_world_player_data(player.build_in_world_player());
+            world.set_in_world_player_data(player.build_in_world_player());
 
-            world_util::add_player_entities(&player);
-            let scene_info = world_util::build_scene_information(&player);
+            let mut ctx = NetContext {
+                player: &mut player,
+                world: &mut world,
+            };
+            world_util::add_player_entities(&mut ctx);
+            let scene_info = world_util::build_scene_information(&mut ctx);
 
-            player.notify(SilenceNpcNotify::default());
+            ctx.player.notify(SilenceNpcNotify::default());
 
-            player.notify(JoinSceneNotify {
+            ctx.player.notify(JoinSceneNotify {
                 scene_info: Some(scene_info),
                 max_entity_id: i64::MAX,
                 transition_option: Some(TransitionOptionPb::default()),
             });
 
-            player.notify(AfterJoinSceneNotify::default());
-            player.notify(player.build_update_formation_notify());
+            ctx.player.notify(AfterJoinSceneNotify::default());
+            ctx.player.notify(ctx.player.build_update_formation_notify());
 
-            let map = logic::utils::quadrant_util::get_map(player.basic_info.cur_map_id);
+            let map = logic::utils::quadrant_util::get_map(ctx.player.basic_info.cur_map_id);
             let quadrant_id = map.get_quadrant_id(
-                player.location.position.position.x * 100.0,
-                player.location.position.position.y * 100.0,
+                ctx.player.location.position.position.x * 100.0,
+                ctx.player.location.position.position.y * 100.0,
             );
-            player.quadrant_id = quadrant_id;
-            player.notify_month_card();
+            ctx.player.quadrant_id = quadrant_id;
+            ctx.player.notify_month_card();
 
             let entities = map.get_initial_entities(quadrant_id);
-            world_util::add_entities(&player, &entities, false);
+            world_util::add_entities(&mut ctx, &entities, false);
 
             drop(player);
 
@@ -200,8 +196,17 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
                 tracing::warn!("logic_thread: process message requested, but player with id {player_id} doesn't exist");
                 return;
             };
-
-            super::handler::handle_logic_message(&mut player.borrow_mut(), message);
+            let mut player = player.borrow_mut();
+            let Some(world) = state.worlds.get_mut(&player.world_owner_id) else {
+                tracing::warn!("logic_thread: process message requested, but world for player id {} doesn't exist", player.world_owner_id);
+                return;
+            };
+            let mut world = world.borrow_mut();
+            let mut net_context = NetContext {
+                player: &mut player,
+                world: &mut world,
+            };
+            super::handler::handle_logic_message(&mut net_context, message);
         }
         LogicInput::RemovePlayer { player_id } => {
             let Some(player) = state.players.remove(&player_id) else {

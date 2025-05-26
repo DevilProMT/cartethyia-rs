@@ -2,21 +2,35 @@ use std::collections::HashSet;
 
 use crate::logic::components::{ParaglidingSkin, RoleSkin, SoarWingSkin, WeaponSkin};
 use crate::logic::ecs::component::ComponentContainer;
-use crate::logic::player::{ItemUsage, Player};
+use crate::logic::player::ItemUsage;
 use crate::logic::role::{Role, RoleFormation};
+use crate::logic::thread_mgr::NetContext;
 use crate::modify_component;
-use wicked_waifus_protocol::{ArrayIntInt, ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse, ERemoveEntityType, EntityAddNotify, EntityEquipSkinChangeNotify, EntityFlySkinChangeData, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EquipFlySkinData, ErrorCode, FlySkinConfigData, FlySkinWearAllRoleRequest, FlySkinWearAllRoleResponse, FlySkinWearRequest, FlySkinWearResponse, FormationAttrRequest, FormationAttrResponse, PbUpLevelRoleRequest, PbUpLevelRoleResponse, PlayerMotionRequest, PlayerMotionResponse, RoleBreakThroughViewRequest, RoleBreakThroughViewResponse, RoleFavorListRequest, RoleFavorListResponse, RoleFlyEquipChangeNotify, RoleLevelUpViewRequest, RoleLevelUpViewResponse, RoleShowListUpdateRequest, RoleShowListUpdateResponse, RoleSkinChangeRequest, RoleSkinChangeResponse, SoarWingOrParaglidingSkinChangeNotify, UnlockRoleSkinListRequest, UnlockRoleSkinListResponse, UpdateFormationRequest, UpdateFormationResponse, WeaponSkinComponentPb};
+use wicked_waifus_protocol::{
+    ArrayIntInt, ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse,
+    ERemoveEntityType, EntityAddNotify, EntityEquipSkinChangeNotify, EntityFlySkinChangeData,
+    EntityPb, EntityRemoveInfo, EntityRemoveNotify, EquipFlySkinData, ErrorCode, FlySkinConfigData,
+    FlySkinWearAllRoleRequest, FlySkinWearAllRoleResponse, FlySkinWearRequest, FlySkinWearResponse,
+    FormationAttrRequest, FormationAttrResponse, PbUpLevelRoleRequest, PbUpLevelRoleResponse,
+    PlayerMotionRequest, PlayerMotionResponse, RoleBreakThroughViewRequest,
+    RoleBreakThroughViewResponse, RoleFavorListRequest, RoleFavorListResponse,
+    RoleFlyEquipChangeNotify, RoleLevelUpViewRequest, RoleLevelUpViewResponse,
+    RoleShowListUpdateRequest, RoleShowListUpdateResponse, RoleSkinChangeRequest,
+    RoleSkinChangeResponse, SoarWingOrParaglidingSkinChangeNotify, UnlockRoleSkinListRequest,
+    UnlockRoleSkinListResponse, UpdateFormationRequest, UpdateFormationResponse,
+    WeaponSkinComponentPb,
+};
 
 pub fn on_role_show_list_update_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: RoleShowListUpdateRequest,
     response: &mut RoleShowListUpdateResponse,
 ) {
-    let role_ids: HashSet<i32> = player.role_list.keys().cloned().collect();
+    let role_ids: HashSet<i32> = ctx.player.role_list.keys().cloned().collect();
     let all_exist = request.role_list.iter().all(|id| role_ids.contains(id));
 
     if all_exist {
-        player.basic_info.role_show_list = request.role_list;
+        ctx.player.basic_info.role_show_list = request.role_list;
         response.error_code = ErrorCode::Success.into();
     } else {
         response.error_code = ErrorCode::InvalidRequest.into(); // TODO: replace with appropriate error code
@@ -24,7 +38,7 @@ pub fn on_role_show_list_update_request(
 }
 
 pub fn on_client_current_role_report_request(
-    _player: &Player,
+    _ctx: &NetContext,
     request: ClientCurrentRoleReportRequest,
     response: &mut ClientCurrentRoleReportResponse,
 ) {
@@ -33,7 +47,7 @@ pub fn on_client_current_role_report_request(
 }
 
 pub fn on_role_favor_list_request(
-    _player: &Player,
+    _ctx: &NetContext,
     _request: RoleFavorListRequest,
     response: &mut RoleFavorListResponse,
 ) {
@@ -42,7 +56,7 @@ pub fn on_role_favor_list_request(
 }
 
 pub fn on_formation_attr_request(
-    _player: &Player,
+    _ctx: &NetContext,
     _request: FormationAttrRequest,
     response: &mut FormationAttrResponse,
 ) {
@@ -50,12 +64,11 @@ pub fn on_formation_attr_request(
 }
 
 pub fn on_update_formation_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: UpdateFormationRequest,
     response: &mut UpdateFormationResponse,
 ) {
-    let mut world_ref = player.world.borrow_mut();
-    let world = world_ref.get_mut_world_entity();
+    let world = ctx.world.get_mut_world_entity();
 
     for formation in request.formations {
         let formation_id = formation.formation_id;
@@ -64,11 +77,12 @@ pub fn on_update_formation_request(
 
         if is_current {
             // update player current formation id
-            player.cur_formation_id = formation_id;
+            ctx.player.cur_formation_id = formation_id;
 
             // search old formation id and set real_formation_id, set is_current to false
             let mut real_formation_id = formation_id;
-            if let Some(rf) = player
+            if let Some(rf) = ctx
+                .player
                 .formation_list
                 .values_mut()
                 .find(|rf| rf.is_current && rf.id != formation_id)
@@ -77,7 +91,7 @@ pub fn on_update_formation_request(
                 rf.is_current = false;
             }
 
-            if let Some(old_formation) = player.formation_list.get(&real_formation_id) {
+            if let Some(old_formation) = ctx.player.formation_list.get(&real_formation_id) {
                 let removed_entities: Vec<i64> = old_formation
                     .role_ids
                     .iter()
@@ -86,10 +100,11 @@ pub fn on_update_formation_request(
                 removed_entities.iter().for_each(|&entity_id| {
                     world.remove_entity(entity_id as i32);
                 });
-                player.notify(player.build_player_entity_remove_notify(
-                    removed_entities,
-                    ERemoveEntityType::RemoveTypeNormal,
-                ));
+                ctx.player
+                    .notify(ctx.player.build_player_entity_remove_notify(
+                        removed_entities,
+                        ERemoveEntityType::RemoveTypeNormal,
+                    ));
             }
 
             let added_roles: Vec<Role> = formation
@@ -100,25 +115,29 @@ pub fn on_update_formation_request(
 
             if !added_roles.is_empty() {
                 // add new roles
-                player.notify(player.build_player_entity_add_notify(added_roles, world));
+                ctx.player.notify(
+                    ctx.player
+                        .build_player_entity_add_notify(added_roles, world),
+                );
             }
 
             // send update group formation notify
-            player.notify(player.build_update_group_formation_notify(
-                RoleFormation {
-                    id: formation_id,
-                    cur_role,
-                    role_ids: formation.role_ids.clone(),
-                    is_current,
-                },
-                world,
-            ));
+            ctx.player
+                .notify(ctx.player.build_update_group_formation_notify(
+                    RoleFormation {
+                        id: formation_id,
+                        cur_role,
+                        role_ids: formation.role_ids.clone(),
+                        is_current,
+                    },
+                    world,
+                ));
 
             response.formation = Some(formation.clone());
         }
 
         // update all formation and check formation_list
-        player
+        ctx.player
             .formation_list
             .entry(formation_id)
             .and_modify(|r| {
@@ -134,13 +153,14 @@ pub fn on_update_formation_request(
             });
     }
 
-    player.notify(player.build_update_formation_notify());
+    ctx.player
+        .notify(ctx.player.build_update_formation_notify());
 
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_player_motion_request(
-    _: &Player,
+    _: &NetContext,
     request: PlayerMotionRequest,
     response: &mut PlayerMotionResponse,
 ) {
@@ -151,20 +171,20 @@ pub fn on_player_motion_request(
 }
 
 pub fn on_unlock_role_skin_list_request(
-    player: &Player,
+    ctx: &NetContext,
     _request: UnlockRoleSkinListRequest,
     response: &mut UnlockRoleSkinListResponse,
 ) {
-    response.role_skin_list = player.unlocked_skins.role_skins.iter().cloned().collect();
+    response.role_skin_list = ctx.player.unlocked_skins.role_skins.iter().cloned().collect();
 }
 
 pub fn on_role_skin_change_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: RoleSkinChangeRequest,
     response: &mut RoleSkinChangeResponse,
 ) {
     // TODO: Should we verify role id first against bindata?
-    let role = player.role_list.get_mut(&request.role_id);
+    let role = ctx.player.role_list.get_mut(&request.role_id);
     let Some(role) = role else {
         response.error_code = ErrorCode::NotValidRole.into();
         return;
@@ -179,7 +199,7 @@ pub fn on_role_skin_change_request(
     };
 
     // Verify Skin is unlocked
-    if !player.unlocked_skins.role_skins.contains(&skin_data.id) {
+    if !ctx.player.unlocked_skins.role_skins.contains(&skin_data.id) {
         response.error_code = ErrorCode::ErrRoleSkinLocked.into();
         return;
     }
@@ -198,67 +218,67 @@ pub fn on_role_skin_change_request(
         }
         role.weapon_skin_id = skin_data.suit_weapon_skin_id;
     }
-    {
-        let world_ref = player.world.borrow();
-        let world = world_ref.get_world_entity();
-        let entity_id = world.get_entity_id(request.role_id);
+
+    let world = ctx.world.get_world_entity();
+    let entity_id = world.get_entity_id(request.role_id);
+    modify_component!(
+        world.get_entity_components(entity_id as i32),
+        RoleSkin,
+        |skin_component: &mut RoleSkin| {
+            skin_component.skin_id = role.skin_id;
+        }
+    );
+    if request.is_wear_weapon_skin {
+        // Check for suit_weapon_skin_id == 0 has already been done
         modify_component!(
             world.get_entity_components(entity_id as i32),
-            RoleSkin,
-            |skin_component: &mut RoleSkin| {
-                skin_component.skin_id = role.skin_id;
+            WeaponSkin,
+            |skin_component: &mut WeaponSkin| {
+                skin_component.skin_id = skin_data.suit_weapon_skin_id;
             }
         );
-        if request.is_wear_weapon_skin {
-            // Check for suit_weapon_skin_id == 0 has already been done
-            modify_component!(
-                world.get_entity_components(entity_id as i32),
-                WeaponSkin,
-                |skin_component: &mut WeaponSkin| {
-                    skin_component.skin_id = skin_data.suit_weapon_skin_id;
-                }
-            );
-            // Since the whole entity is recreated this shouldn't be needed but meh, whatever
-            player.notify(EntityEquipSkinChangeNotify {
-                entity_id,
-                weapon_skin_component_pb: Some(WeaponSkinComponentPb {
-                    weapon_skin_id:skin_data.suit_weapon_skin_id,
-                }),
-            });
-        }
-        player.notify(EntityRemoveNotify {
-            remove_infos: vec![EntityRemoveInfo {
-                entity_id,
-                r#type: 0,
-            }],
-            is_remove: false,
-        });
-
-        let mut pb = EntityPb {
-            id: entity_id,
-            ..Default::default()
-        };
-
-        world
-            .get_entity_components(entity_id as i32)
-            .into_iter()
-            .for_each(|comp| comp.set_pb_data(&mut pb));
-
-        player.notify(EntityAddNotify {
-            entity_pbs: vec![pb],
-            remove_tag_ids: false,
+        // Since the whole entity is recreated this shouldn't be needed but meh, whatever
+        ctx.player.notify(EntityEquipSkinChangeNotify {
+            entity_id,
+            weapon_skin_component_pb: Some(WeaponSkinComponentPb {
+                weapon_skin_id: skin_data.suit_weapon_skin_id,
+            }),
         });
     }
-    player.notify(player.build_update_formation_notify());
+    ctx.player.notify(EntityRemoveNotify {
+        remove_infos: vec![EntityRemoveInfo {
+            entity_id,
+            r#type: 0,
+        }],
+        is_remove: false,
+    });
+
+    let mut pb = EntityPb {
+        id: entity_id,
+        ..Default::default()
+    };
+
+    world
+        .get_entity_components(entity_id as i32)
+        .into_iter()
+        .for_each(|comp| comp.set_pb_data(&mut pb));
+
+    ctx.player.notify(EntityAddNotify {
+        entity_pbs: vec![pb],
+        remove_tag_ids: false,
+    });
+    // player.notify(player.build_update_group_formation_notify(aaa, world));
+    ctx.player
+        .notify(ctx.player.build_update_formation_notify());
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_fly_skin_wear_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: FlySkinWearRequest,
     response: &mut FlySkinWearResponse,
 ) {
-    let role = player.role_list.get_mut(&request.role_id);
+    let role = ctx.player.role_list.get_mut(&request.role_id);
     let Some(role) = role else {
         response.error_code = ErrorCode::NotValidRole.into();
         return;
@@ -275,14 +295,14 @@ pub fn on_fly_skin_wear_request(
     match skin.skin_type {
         0 => {
             // Verify Skin is unlocked
-            if !player.unlocked_skins.fly_skins.contains(&skin.id) {
+            if !ctx.player.unlocked_skins.fly_skins.contains(&skin.id) {
                 response.error_code = ErrorCode::ErrRoleSkinLocked.into();
                 return;
             }
             role.fly_skin_id = request.skin_id
         }
         1 => {
-            if !player.unlocked_skins.wing_skins.contains(&skin.id) {
+            if !ctx.player.unlocked_skins.wing_skins.contains(&skin.id) {
                 response.error_code = ErrorCode::ErrRoleSkinLocked.into();
                 return;
             }
@@ -293,43 +313,40 @@ pub fn on_fly_skin_wear_request(
             return;
         }
     }
-    {
-        let world_ref = player.world.borrow();
-        let world = world_ref.get_world_entity();
-        let entity_id = world.get_entity_id(request.role_id);
-        match skin.skin_type {
-            0 => {
-                modify_component!(
-                    world.get_entity_components(entity_id as i32),
-                    SoarWingSkin,
-                    |skin_component: &mut SoarWingSkin| {
-                        skin_component.skin_id = role.skin_id;
-                    }
-                );
-            }
-            1 => {
-                modify_component!(
-                    world.get_entity_components(entity_id as i32),
-                    ParaglidingSkin,
-                    |skin_component: &mut ParaglidingSkin| {
-                        skin_component.skin_id = role.skin_id;
-                    }
-                );
-            }
-            _ => unreachable!("Already tested above"),
+    let world = ctx.world.get_world_entity();
+    let entity_id = world.get_entity_id(request.role_id);
+    match skin.skin_type {
+        0 => {
+            modify_component!(
+                world.get_entity_components(entity_id as i32),
+                SoarWingSkin,
+                |skin_component: &mut SoarWingSkin| {
+                    skin_component.skin_id = role.skin_id;
+                }
+            );
         }
-        player.notify(SoarWingOrParaglidingSkinChangeNotify {
-            fly_skin_data: vec![EntityFlySkinChangeData {
-                entity_id,
-                fly_skin_config_data: vec![FlySkinConfigData {
-                    skin_id: request.skin_id,
-                    fly_skin_id: skin.skin_type,
-                }],
-            }],
-        });
+        1 => {
+            modify_component!(
+                world.get_entity_components(entity_id as i32),
+                ParaglidingSkin,
+                |skin_component: &mut ParaglidingSkin| {
+                    skin_component.skin_id = role.skin_id;
+                }
+            );
+        }
+        _ => unreachable!("Already tested above"),
     }
+    ctx.player.notify(SoarWingOrParaglidingSkinChangeNotify {
+        fly_skin_data: vec![EntityFlySkinChangeData {
+            entity_id,
+            fly_skin_config_data: vec![FlySkinConfigData {
+                skin_id: request.skin_id,
+                fly_skin_id: skin.skin_type,
+            }],
+        }],
+    });
 
-    player.notify(RoleFlyEquipChangeNotify {
+    ctx.player.notify(RoleFlyEquipChangeNotify {
         fly_skin_data: vec![EquipFlySkinData {
             role_id: request.role_id,
             skin_id: request.skin_id,
@@ -339,7 +356,7 @@ pub fn on_fly_skin_wear_request(
 }
 
 pub fn on_fly_skin_wear_all_role_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: FlySkinWearAllRoleRequest,
     response: &mut FlySkinWearAllRoleResponse,
 ) {
@@ -353,20 +370,20 @@ pub fn on_fly_skin_wear_all_role_request(
     match skin.skin_type {
         0 => {
             // Verify Skin is unlocked
-            if !player.unlocked_skins.fly_skins.contains(&skin.id) {
+            if !ctx.player.unlocked_skins.fly_skins.contains(&skin.id) {
                 response.error_code = ErrorCode::ErrRoleSkinLocked.into();
                 return;
             }
-            for role in player.role_list.values_mut() {
+            for role in ctx.player.role_list.values_mut() {
                 role.fly_skin_id = request.skin_id;
             }
         }
         1 => {
-            if !player.unlocked_skins.wing_skins.contains(&skin.id) {
+            if !ctx.player.unlocked_skins.wing_skins.contains(&skin.id) {
                 response.error_code = ErrorCode::ErrRoleSkinLocked.into();
                 return;
             }
-            for role in player.role_list.values_mut() {
+            for role in ctx.player.role_list.values_mut() {
                 role.wing_skin_id = request.skin_id;
             }
         }
@@ -375,8 +392,9 @@ pub fn on_fly_skin_wear_all_role_request(
             return;
         }
     }
-    player.notify(RoleFlyEquipChangeNotify {
-        fly_skin_data: player
+    ctx.player.notify(RoleFlyEquipChangeNotify {
+        fly_skin_data: ctx
+            .player
             .role_list
             .values()
             .map(|r| EquipFlySkinData {
@@ -385,61 +403,59 @@ pub fn on_fly_skin_wear_all_role_request(
             })
             .collect::<Vec<_>>(),
     });
-    {
-        let world_ref = player.world.borrow();
-        let world = world_ref.get_world_entity();
-        let data = player
-            .role_list
-            .values()
-            .filter_map(|role| {
-                let entity_id = world.get_entity_id(role.role_id);
-                if entity_id == -1 {
-                    None
-                } else {
-                    match skin.skin_type {
-                        0 => {
-                            modify_component!(
-                                world.get_entity_components(entity_id as i32),
-                                SoarWingSkin,
-                                |skin_component: &mut SoarWingSkin| {
-                                    skin_component.skin_id = role.skin_id;
-                                }
-                            );
-                        }
-                        1 => {
-                            modify_component!(
-                                world.get_entity_components(entity_id as i32),
-                                ParaglidingSkin,
-                                |skin_component: &mut ParaglidingSkin| {
-                                    skin_component.skin_id = role.skin_id;
-                                }
-                            );
-                        }
-                        _ => unreachable!("Already tested above"),
+    let world = ctx.world.get_world_entity();
+    let data = ctx
+        .player
+        .role_list
+        .values()
+        .filter_map(|role| {
+            let entity_id = world.get_entity_id(role.role_id);
+            if entity_id == -1 {
+                None
+            } else {
+                match skin.skin_type {
+                    0 => {
+                        modify_component!(
+                            world.get_entity_components(entity_id as i32),
+                            SoarWingSkin,
+                            |skin_component: &mut SoarWingSkin| {
+                                skin_component.skin_id = role.skin_id;
+                            }
+                        );
                     }
-                    Some(EntityFlySkinChangeData {
-                        entity_id,
-                        fly_skin_config_data: vec![FlySkinConfigData {
-                            skin_id: request.skin_id,
-                            fly_skin_id: skin.skin_type,
-                        }],
-                    })
+                    1 => {
+                        modify_component!(
+                            world.get_entity_components(entity_id as i32),
+                            ParaglidingSkin,
+                            |skin_component: &mut ParaglidingSkin| {
+                                skin_component.skin_id = role.skin_id;
+                            }
+                        );
+                    }
+                    _ => unreachable!("Already tested above"),
                 }
-            })
-            .collect::<Vec<_>>();
-        player.notify(SoarWingOrParaglidingSkinChangeNotify {
-            fly_skin_data: data,
-        });
-    }
+                Some(EntityFlySkinChangeData {
+                    entity_id,
+                    fly_skin_config_data: vec![FlySkinConfigData {
+                        skin_id: request.skin_id,
+                        fly_skin_id: skin.skin_type,
+                    }],
+                })
+            }
+        })
+        .collect::<Vec<_>>();
+    ctx.player.notify(SoarWingOrParaglidingSkinChangeNotify {
+        fly_skin_data: data,
+    });
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_role_level_up_view_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: RoleLevelUpViewRequest,
     response: &mut RoleLevelUpViewResponse,
 ) {
-    let role = player.role_list.get(&request.role_id);
+    let role = ctx.player.role_list.get(&request.role_id);
     let Some(role) = role else {
         response.error_code = ErrorCode::NotValidRole.into();
         return;
@@ -454,24 +470,24 @@ pub fn on_role_level_up_view_request(
     let items = wicked_waifus_data::role_exp_item_data::iter()
         .map(|(&id, _)| id)
         .collect::<Vec<_>>();
-    response.item_list = player.inventory.to_array_int_int_filtered(&items);
+    response.item_list = ctx.player.inventory.to_array_int_int_filtered(&items);
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_pb_up_level_role_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: PbUpLevelRoleRequest,
     response: &mut PbUpLevelRoleResponse,
 ) {
     response.role_id = request.role_id;
-    let role = player.role_list.get(&request.role_id);
+    let role = ctx.player.role_list.get(&request.role_id);
     let Some(role) = role else {
         response.error_code = ErrorCode::NotValidRole.into();
         return;
     };
 
     // TODO: no shell_credit??? :turtle_skull:
-    let items = player.inventory.consume_items(
+    let items = ctx.player.inventory.consume_items(
         &request
             .item_list
             .iter()
@@ -525,11 +541,11 @@ pub fn on_pb_up_level_role_request(
 // on_role_break_through_view_request
 
 pub fn on_role_break_through_view_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: RoleBreakThroughViewRequest,
     response: &mut RoleBreakThroughViewResponse,
 ) {
-    let role = player.role_list.get(&request.role_id);
+    let role = ctx.player.role_list.get(&request.role_id);
     let Some(role) = role else {
         response.error_code = ErrorCode::NotValidRole.into();
         return;

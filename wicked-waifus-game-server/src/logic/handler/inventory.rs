@@ -1,26 +1,29 @@
-use wicked_waifus_protocol::{ItemExchangeInfo, ItemExchangeInfoRequest, ItemExchangeInfoResponse, NormalItemRequest, NormalItemResponse, PhantomItemRequest, PhantomItemResponse, WeaponItemRequest, WeaponItemResponse};
-
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
+use wicked_waifus_protocol::{
+    ItemExchangeInfo, ItemExchangeInfoRequest, ItemExchangeInfoResponse, NormalItemRequest,
+    NormalItemResponse, PhantomItemRequest, PhantomItemResponse, WeaponItemRequest,
+    WeaponItemResponse,
+};
 
 pub fn on_normal_item_request(
-    player: &mut Player,
+    ctx: &NetContext,
     _: NormalItemRequest,
     response: &mut NormalItemResponse,
 ) {
     tracing::debug!("Received NormalItemRequest, returning player inventory");
-    response.normal_item_list = player.inventory.to_normal_item_list();
+    response.normal_item_list = ctx.player.inventory.to_normal_item_list();
 }
 
 pub fn on_weapon_item_request(
-    player: &mut Player,
+    ctx: &NetContext,
     _: WeaponItemRequest,
     response: &mut WeaponItemResponse,
 ) {
-    response.weapon_item_list = player.inventory.to_weapon_item_list();
+    response.weapon_item_list = ctx.player.inventory.to_weapon_item_list();
 }
 
 pub fn on_phantom_item_request(
-    _player: &mut Player,
+    _ctx: &mut NetContext,
     _: PhantomItemRequest,
     _response: &mut PhantomItemResponse,
 ) {
@@ -29,7 +32,7 @@ pub fn on_phantom_item_request(
 }
 
 pub fn on_item_exchange_info_request(
-    _player: &mut Player,
+    _ctx: &mut NetContext,
     _: ItemExchangeInfoRequest,
     response: &mut ItemExchangeInfoResponse,
 ) {

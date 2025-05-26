@@ -1,8 +1,8 @@
+use crate::logic::thread_mgr::NetContext;
 use wicked_waifus_protocol::{ErrorCode, LobbyListRequest, LobbyListResponse};
-use crate::logic::player::Player;
 
 pub fn on_lobby_list_request(
-    _player: &mut Player,
+    _ctx: &mut NetContext,
     request: LobbyListRequest,
     response: &mut LobbyListResponse,
 ) {

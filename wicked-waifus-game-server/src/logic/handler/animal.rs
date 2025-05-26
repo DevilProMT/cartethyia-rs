@@ -1,17 +1,21 @@
-use wicked_waifus_protocol::{AnimalDestroyRequest, AnimalDestroyResponse, AnimalDieRequest, AnimalDieResponse, AnimalDropRequest, AnimalDropResponse, EEntityType, ERemoveEntityType, EntityLivingStatusNotify, ErrorCode, LivingStatus};
+use wicked_waifus_protocol::{
+    AnimalDestroyRequest, AnimalDestroyResponse, AnimalDieRequest, AnimalDieResponse,
+    AnimalDropRequest, AnimalDropResponse, EEntityType, ERemoveEntityType,
+    EntityLivingStatusNotify, ErrorCode, LivingStatus,
+};
 
 use crate::logic::ecs::component::ComponentContainer;
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 use crate::logic::utils::world_util;
 use crate::query_components;
 
 pub fn on_animal_die_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: AnimalDieRequest,
     response: &mut AnimalDieResponse,
 ) {
     tracing::warn!("AnimalDieRequest not fully implemented");
-    player.notify(EntityLivingStatusNotify {
+    ctx.player.notify(EntityLivingStatusNotify {
         id: request.entity_id,
         living_status: LivingStatus::Dead.into(),
         drop_vision_item: vec![],
@@ -21,7 +25,7 @@ pub fn on_animal_die_request(
 }
 
 pub fn on_animal_drop_request(
-    _player: &mut Player,
+    _ctx: &mut NetContext,
     _request: AnimalDropRequest,
     response: &mut AnimalDropResponse,
 ) {
@@ -32,15 +36,13 @@ pub fn on_animal_drop_request(
 }
 
 pub fn on_animal_destroy_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: AnimalDestroyRequest,
     response: &mut AnimalDestroyResponse,
 ) {
+    let entity_id = request.entity_id;
     {
-        let entity_id = request.entity_id;
-        let world_ref = player.world.borrow();
-        let world = world_ref.get_world_entity();
-        let (Some(config), ) = query_components!(world,entity_id,EntityConfig) else {
+        let (Some(config), ) = query_components!(ctx.world.get_world_entity(), entity_id, EntityConfig) else {
             response.error_code = ErrorCode::ErrAnimalEntityNotExist.into();
             return;
         };
@@ -48,7 +50,7 @@ pub fn on_animal_destroy_request(
             response.error_code = ErrorCode::ErrNotAnimalEntity.into();
         }
     }
-    world_util::remove_entity(player, request.entity_id, ERemoveEntityType::RemoveTypeNormal);
+    world_util::remove_entity(ctx, request.entity_id, ERemoveEntityType::RemoveTypeNormal);
     response.error_code = ErrorCode::Success.into();
 }
 

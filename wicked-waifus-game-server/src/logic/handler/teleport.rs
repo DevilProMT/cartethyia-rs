@@ -1,37 +1,51 @@
-use wicked_waifus_protocol::{ErrorCode, JoinSceneNotify, LeaveSceneNotify, TeleportDataRequest, TeleportDataResponse, TeleportFinishRequest, TeleportFinishResponse, TeleportNotify, TeleportReason, TeleportTransferRequest, TeleportTransferResponse, TransitionOptionPb};
+use wicked_waifus_protocol::{
+    ErrorCode, JoinSceneNotify, LeaveSceneNotify, TeleportDataRequest, TeleportDataResponse,
+    TeleportFinishRequest, TeleportFinishResponse, TeleportNotify, TeleportReason,
+    TeleportTransferRequest, TeleportTransferResponse, TransitionOptionPb,
+};
 
-use wicked_waifus_data::{level_entity_config_data, RawVectorData};
 use wicked_waifus_data::pb_components::teleport::TeleportComponent;
+use wicked_waifus_data::{level_entity_config_data, RawVectorData};
 
 use crate::logic::math::Vector3f;
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 use crate::logic::utils::world_util;
 
 pub fn on_teleport_data_request(
-    player: &mut Player,
+    ctx: &NetContext,
     _: TeleportDataRequest,
     response: &mut TeleportDataResponse,
 ) {
     response.error_code = ErrorCode::Success.into();
-    response.ids = player.teleports.teleports_data.iter()
+    response.ids = ctx
+        .player
+        .teleports
+        .teleports_data
+        .iter()
         .map(|teleport| teleport.id)
         .collect::<Vec<_>>();
 }
 
 pub fn on_teleport_transfer_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: TeleportTransferRequest,
     response: &mut TeleportTransferResponse,
 ) {
     tracing::debug!("received transfer request for teleport id: {}", request.id);
-    let Some(teleport) = wicked_waifus_data::teleporter_data::iter()
-        .find(|teleporter| request.id == teleporter.id) else {
+    let Some(teleport) =
+        wicked_waifus_data::teleporter_data::iter().find(|teleporter| request.id == teleporter.id)
+    else {
         response.error_code = ErrorCode::ErrTeleportIdNotExist.into();
         return;
     };
 
-    println!("received transfer request for teleport entity id: {}", &teleport.teleport_entity_config_id);
-    let Some(tp) = level_entity_config_data::get(teleport.map_id, teleport.teleport_entity_config_id) else {
+    println!(
+        "received transfer request for teleport entity id: {}",
+        &teleport.teleport_entity_config_id
+    );
+    let Some(tp) =
+        level_entity_config_data::get(teleport.map_id, teleport.teleport_entity_config_id)
+    else {
         response.error_code = ErrorCode::ErrTeleportEntityNotExist.into();
         return;
     };
@@ -41,8 +55,7 @@ pub fn on_teleport_transfer_request(
         return;
     };
 
-    if teleport_component.disabled.unwrap_or(false) ||
-        teleport_component.teleporter_id.is_none() {
+    if teleport_component.disabled.unwrap_or(false) || teleport_component.teleporter_id.is_none() {
         response.error_code = ErrorCode::ErrTeleportGmGetCreatureGenCfgFailed.into();
     }
     if teleport_component.teleporter_id.unwrap() != request.id {
@@ -58,8 +71,8 @@ pub fn on_teleport_transfer_request(
         response.yaw = 0f32;
         response.roll = 0f32;
 
-        if player.basic_info.cur_map_id == teleport.map_id {
-            player.notify(TeleportNotify {
+        if ctx.player.basic_info.cur_map_id == teleport.map_id {
+            ctx.player.notify(TeleportNotify {
                 map_id: teleport.map_id,
                 pos: Some(teleport_position.to_protobuf()),
                 rot: None,
@@ -71,14 +84,14 @@ pub fn on_teleport_transfer_request(
             });
         } else {
             // remove entity
-            player.notify(LeaveSceneNotify {
-                player_id: player.basic_info.id,
+            ctx.player.notify(LeaveSceneNotify {
+                player_id: ctx.player.basic_info.id,
                 scene_id: "".to_string(),
                 transition_option: Some(TransitionOptionPb::default()),
             });
-            let scene_info = world_util::build_scene_information(&player);
+            let scene_info = world_util::build_scene_information(ctx);
             // TODO: Trigger initial join world flow??
-            player.notify(JoinSceneNotify {
+            ctx.player.notify(JoinSceneNotify {
                 scene_info: Some(scene_info),
                 max_entity_id: i64::MAX,
                 transition_option: Some(TransitionOptionPb::default()),
@@ -88,7 +101,7 @@ pub fn on_teleport_transfer_request(
 }
 
 pub fn on_teleport_finish_request(
-    _player: &mut Player,
+    _ctx: &mut NetContext,
     _: TeleportFinishRequest,
     response: &mut TeleportFinishResponse,
 ) {

@@ -1,8 +1,4 @@
-use wicked_waifus_protocol::{
-    EEntityType, ERemoveEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo,
-    EntityRemoveNotify, EntityState, FightRoleInfo, FightRoleInfos, LivingStatus, SceneInformation,
-    SceneMode, ScenePlayerInformation, SceneTimeInfo,
-};
+use wicked_waifus_protocol::{EEntityType, ERemoveEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState, FightRoleInfo, FightRoleInfos, LivingStatus, SceneInformation, SceneMode, ScenePlayerInformation, SceneTimeInfo};
 
 use wicked_waifus_data::pb_components::ComponentsData;
 use wicked_waifus_data::{blueprint_config_data, template_config_data};
@@ -22,6 +18,7 @@ use crate::logic::{
     },
     ecs::component::ComponentContainer,
 };
+use crate::logic::thread_mgr::NetContext;
 use crate::query_with;
 
 #[macro_export]
@@ -113,16 +110,14 @@ macro_rules! create_player_entity_pb {
     }};
 }
 
-pub fn add_player_entities(player: &Player) {
-    let mut world_ref = player.world.borrow_mut();
-    let world = world_ref.get_mut_world_entity();
-
-    let current_formation = player.formation_list.get(&player.cur_formation_id).unwrap();
+pub fn add_player_entities(ctx: &mut NetContext) {
+    let world = ctx.world.get_mut_world_entity();
+    let current_formation = ctx.player.formation_list.get(&ctx.player.cur_formation_id).unwrap();
 
     let role_vec = current_formation
         .role_ids
         .iter()
-        .map(|role_id| player.role_list.get(&role_id).unwrap())
+        .map(|role_id| ctx.player.role_list.get(&role_id).unwrap())
         .collect::<Vec<_>>();
     let cur_role_id = current_formation.cur_role;
 
@@ -131,7 +126,7 @@ pub fn add_player_entities(player: &Player) {
             let entity = world.create_entity(
                 role.role_id,
                 EEntityType::Player.into(),
-                player.basic_info.cur_map_id,
+                ctx.player.basic_info.cur_map_id,
             );
             // Once per character buffs are implemented, add a mut on role_buffs
             let fight_buff_infos = world.generate_role_permanent_buffs(entity.entity_id as i64);
@@ -154,10 +149,10 @@ pub fn add_player_entities(player: &Player) {
                     entity_state: EntityState::Default,
                 }))
                 .with(ComponentContainer::OwnerPlayer(OwnerPlayer(
-                    player.basic_info.id,
+                    ctx.player.basic_info.id,
                 )))
                 .with(ComponentContainer::Position(Position(
-                    player.location.position.clone(),
+                    ctx.player.location.position.clone(),
                 )))
                 .with(ComponentContainer::Visibility(Visibility {
                     is_visible: role.role_id == cur_role_id,
@@ -177,7 +172,7 @@ pub fn add_player_entities(player: &Player) {
                     weapon_breach_level: 0, // TODO: store this too
                 }))
                 .with(ComponentContainer::VisionSkill(VisionSkill {
-                    skill_id: player.explore_tools.active_explore_skill,
+                    skill_id: ctx.player.explore_tools.active_explore_skill,
                 }))
                 .with(ComponentContainer::RoleSkin(RoleSkin {
                     skin_id: role.skin_id,
@@ -203,23 +198,23 @@ pub fn add_player_entities(player: &Player) {
     }
 }
 
-pub fn build_scene_information(player: &Player) -> SceneInformation {
+pub fn build_scene_information(ctx: &mut NetContext) -> SceneInformation {
     SceneInformation {
         scene_id: String::new(),
-        instance_id: player.location.instance_id,
-        owner_id: player.basic_info.id,
+        instance_id: ctx.player.location.instance_id,
+        owner_id: ctx.player.basic_info.id,
         dynamic_entity_list: Vec::new(),
         blackboard_params: Vec::new(),
         end_time: 0,
-        aoi_data: Some(entity_serializer::build_scene_add_on_init_data(player)),
-        player_infos: build_player_info_list(&player.world.borrow_mut()),
+        aoi_data: Some(entity_serializer::build_scene_add_on_init_data(ctx)),
+        player_infos: build_player_info_list(ctx.world),
         mode: SceneMode::Single.into(),
         time_info: Some(SceneTimeInfo {
             owner_time_clock_time_span: 0,
             hour: 8,
             minute: 0,
         }),
-        cur_context_id: player.basic_info.id as i64,
+        cur_context_id: ctx.player.basic_info.id as i64,
         ..Default::default()
     }
 }
@@ -286,12 +281,10 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
         .collect()
 }
 
-pub fn remove_entity(player: &Player, entity_id: i64, remove_type: ERemoveEntityType) {
-    let mut world_ref = player.world.borrow_mut();
-    let world = world_ref.get_mut_world_entity();
-
-    if world.remove_entity(entity_id as i32) {
-        player.notify(EntityRemoveNotify {
+pub fn remove_entity(ctx: &mut NetContext, entity_id: i64, remove_type: ERemoveEntityType) {
+    if ctx.world.get_mut_world_entity().remove_entity(entity_id as i32) {
+        // TODO: For COOP find a way to get players from world
+        ctx.player.notify(EntityRemoveNotify {
             remove_infos: vec![EntityRemoveInfo {
                 entity_id,
                 r#type: remove_type.into(),
@@ -301,22 +294,19 @@ pub fn remove_entity(player: &Player, entity_id: i64, remove_type: ERemoveEntity
     }
 }
 
-pub fn remove_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
+pub fn remove_entities(ctx: &mut NetContext, entities: &[&LevelEntityConfigData]) {
     let mut removed_entities = Vec::with_capacity(entities.len());
-    // Enclose to drop borrow mut ASAP
-    {
-        let mut world_ref = player.world.borrow_mut();
-        let world = world_ref.get_mut_world_entity();
 
-        for entity in entities {
-            let entity_id = entity.entity_id as i32; // TODO: Should be i64
-            if world.remove_entity(entity_id) {
-                removed_entities.push(world.get_entity_id(entity_id));
-            }
+    let world = ctx.world.get_mut_world_entity();
+    for entity in entities {
+        let entity_id = entity.entity_id as i32; // TODO: Should be i64
+        if world.remove_entity(entity_id) {
+            removed_entities.push(world.get_entity_id(entity_id));
         }
     }
     for entity_id in removed_entities {
-        player.notify(EntityRemoveNotify {
+        // TODO: For COOP find a way to get players from world
+        ctx.player.notify(EntityRemoveNotify {
             remove_infos: vec![EntityRemoveInfo {
                 entity_id,
                 r#type: 0,
@@ -326,128 +316,124 @@ pub fn remove_entities(player: &Player, entities: &[&LevelEntityConfigData]) {
     }
 }
 
-pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], external_awake: bool) {
+pub fn add_entities(ctx: &mut NetContext, entities: &[&LevelEntityConfigData], external_awake: bool) {
     let mut added_entities = Vec::with_capacity(entities.len());
-    // Enclose to drop borrow mut ASAP
-    {
-        let mut world_ref = player.world.borrow_mut();
-        let world = world_ref.get_mut_world_entity();
-
-        for entity in entities {
-            // Skip hidden entities
-            if entity.is_hidden {
-                tracing::debug!("Hidden entity with config id: {}", entity.entity_id);
-                continue;
-            }
-            if entity.in_sleep && !external_awake {
-                tracing::debug!(
+    
+    let world = ctx.world.get_mut_world_entity();
+    for entity in entities {
+        // Skip hidden entities
+        if entity.is_hidden {
+            tracing::debug!("Hidden entity with config id: {}", entity.entity_id);
+            continue;
+        }
+        if entity.in_sleep && !external_awake {
+            tracing::debug!(
                     "Sleep entity with config id not spawned: {}",
                     entity.entity_id
                 );
-                continue;
-            }
-
-            let blueprint_config = blueprint_config_data::get(&entity.blueprint_type);
-            let template_config = template_config_data::get(&entity.blueprint_type);
-            if blueprint_config.is_none() || template_config.is_none() {
-                continue;
-            }
-
-            let entity_logic: EntityLogic = blueprint_config.unwrap().entity_logic;
-            let (config_type, entity_type, mut entity_state) = match entity_logic {
-                EntityLogic::Item => (
-                    EntityConfigType::Level,
-                    EEntityType::SceneItem,
-                    EntityState::Default,
-                ),
-                EntityLogic::Animal => (
-                    EntityConfigType::Level,
-                    EEntityType::Animal,
-                    EntityState::Default,
-                ),
-                EntityLogic::Monster => (
-                    EntityConfigType::Level,
-                    EEntityType::Monster,
-                    EntityState::Born,
-                ),
-                EntityLogic::Vehicle => (
-                    EntityConfigType::Level,
-                    EEntityType::Vehicle,
-                    EntityState::Default,
-                ),
-                EntityLogic::Npc => (
-                    EntityConfigType::Level,
-                    EEntityType::Npc,
-                    EntityState::Default,
-                ),
-                EntityLogic::Vision => (
-                    EntityConfigType::Level,
-                    EEntityType::Vision,
-                    EntityState::Default,
-                ),
-                EntityLogic::ClientOnly => (
-                    EntityConfigType::Level,
-                    EEntityType::ClientOnly,
-                    EntityState::Default,
-                ),
-                EntityLogic::ServerOnly => {
-                    tracing::debug!("Unhandled entity to be added of logic: {:?} with blueprint_type {} and id: {}", entity_logic, entity.blueprint_type, entity.entity_id);
-                    continue;
-                }
-                EntityLogic::Custom => (
-                    EntityConfigType::Level,
-                    EEntityType::Custom,
-                    EntityState::Default,
-                ),
-            };
-
-            if entity.in_sleep {
-                entity_state = EntityState::Sleep;
-            }
-
-            let config_id = entity.entity_id as i32; // TODO: i64????
-            let map_id = entity.map_id;
-            let components: ComponentsData = entity
-                .components_data
-                .merge_with_template(&template_config.unwrap().components_data);
-            let tmp_entity = world.create_entity(config_id, config_type.into(), map_id);
-            let mut builder = world.create_builder(tmp_entity);
-            builder
-                .with(ComponentContainer::EntityConfig(EntityConfig {
-                    camp: components
-                        .base_info_component
-                        .as_ref()
-                        .and_then(|b| b.camp)
-                        .unwrap_or(0),
-                    config_id,
-                    config_type,
-                    entity_type,
-                    entity_state,
-                }))
-                .with(ComponentContainer::Position(Position(Transform::from(
-                    &entity.transform[..],
-                ))))
-                .with(ComponentContainer::Visibility(Visibility {
-                    is_visible: true,
-                    is_actor_visible: true,
-                }))
-                // Some entities may not actually have movement, but it's okay since we won't
-                // receive move package push for them
-                .with(ComponentContainer::Movement(Movement::default()));
-
-            build_autonomous_component(&mut builder, player.basic_info.id, entity_logic);
-            build_interact_component(&mut builder, &components);
-            build_tags_components(&mut builder, &components, player, blueprint_config.unwrap().entity_type, config_id as i64);
-            build_attribute_component(&mut builder, &components, player.location.instance_id);
-            build_ai_components(&mut builder, &components);
-            added_entities.push(builder.build());
+            continue;
         }
+
+        let blueprint_config = blueprint_config_data::get(&entity.blueprint_type);
+        let template_config = template_config_data::get(&entity.blueprint_type);
+        if blueprint_config.is_none() || template_config.is_none() {
+            continue;
+        }
+
+        let entity_logic: EntityLogic = blueprint_config.unwrap().entity_logic;
+        let (config_type, entity_type, mut entity_state) = match entity_logic {
+            EntityLogic::Item => (
+                EntityConfigType::Level,
+                EEntityType::SceneItem,
+                EntityState::Default,
+            ),
+            EntityLogic::Animal => (
+                EntityConfigType::Level,
+                EEntityType::Animal,
+                EntityState::Default,
+            ),
+            EntityLogic::Monster => (
+                EntityConfigType::Level,
+                EEntityType::Monster,
+                EntityState::Born,
+            ),
+            EntityLogic::Vehicle => (
+                EntityConfigType::Level,
+                EEntityType::Vehicle,
+                EntityState::Default,
+            ),
+            EntityLogic::Npc => (
+                EntityConfigType::Level,
+                EEntityType::Npc,
+                EntityState::Default,
+            ),
+            EntityLogic::Vision => (
+                EntityConfigType::Level,
+                EEntityType::Vision,
+                EntityState::Default,
+            ),
+            EntityLogic::ClientOnly => (
+                EntityConfigType::Level,
+                EEntityType::ClientOnly,
+                EntityState::Default,
+            ),
+            EntityLogic::ServerOnly => {
+                tracing::debug!("Unhandled entity to be added of logic: {:?} with blueprint_type {} and id: {}", entity_logic, entity.blueprint_type, entity.entity_id);
+                continue;
+            }
+            EntityLogic::Custom => (
+                EntityConfigType::Level,
+                EEntityType::Custom,
+                EntityState::Default,
+            ),
+        };
+
+        if entity.in_sleep {
+            entity_state = EntityState::Sleep;
+        }
+
+        let config_id = entity.entity_id as i32; // TODO: i64????
+        let map_id = entity.map_id;
+        let components: ComponentsData = entity
+            .components_data
+            .merge_with_template(&template_config.unwrap().components_data);
+        let tmp_entity = world.create_entity(config_id, config_type.into(), map_id);
+        let mut builder = world.create_builder(tmp_entity);
+        builder
+            .with(ComponentContainer::EntityConfig(EntityConfig {
+                camp: components
+                    .base_info_component
+                    .as_ref()
+                    .and_then(|b| b.camp)
+                    .unwrap_or(0),
+                config_id,
+                config_type,
+                entity_type,
+                entity_state,
+            }))
+            .with(ComponentContainer::Position(Position(Transform::from(
+                &entity.transform[..],
+            ))))
+            .with(ComponentContainer::Visibility(Visibility {
+                is_visible: true,
+                is_actor_visible: true,
+            }))
+            // Some entities may not actually have movement, but it's okay since we won't
+            // receive move package push for them
+            .with(ComponentContainer::Movement(Movement::default()));
+
+        build_autonomous_component(&mut builder, ctx.player.basic_info.id, entity_logic);
+        build_interact_component(&mut builder, &components);
+        build_tags_components(&mut builder, &components, ctx.player, blueprint_config.unwrap().entity_type, config_id as i64);
+        build_attribute_component(&mut builder, &components, ctx.player.location.instance_id);
+        build_ai_components(&mut builder, &components);
+        added_entities.push(builder.build());
     }
 
-    let world_ref = player.world.borrow();
-    let world = world_ref.get_world_entity();
+    let world = ctx.world.get_world_entity();
     // Since kuro has issues, we can only send one
     for entity in added_entities {
+        // TODO: For COOP find a way to get players from world
         let mut pb = EntityPb {
             id: entity.entity_id as i64, // TODO: Should be i64
             ..Default::default()
@@ -458,7 +444,7 @@ pub fn add_entities(player: &Player, entities: &[&LevelEntityConfigData], extern
             .into_iter()
             .for_each(|comp| comp.set_pb_data(&mut pb));
 
-        player.notify(EntityAddNotify {
+        ctx.player.notify(EntityAddNotify {
             entity_pbs: vec![pb],
             remove_tag_ids: true,
         });

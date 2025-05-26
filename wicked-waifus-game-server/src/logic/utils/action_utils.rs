@@ -6,7 +6,8 @@ use wicked_waifus_data::pb_components::action::{Action, ChangeSelfEntityState, U
 use wicked_waifus_data::pb_components::entity_state::EntityStateComponent;
 
 use crate::logic::ecs::component::ComponentContainer;
-use crate::logic::player::{ItemUsage, Player};
+use crate::logic::player::ItemUsage;
+use crate::logic::thread_mgr::NetContext;
 use crate::logic::utils::tag_utils;
 use crate::query_components;
 
@@ -18,7 +19,7 @@ macro_rules! unimplemented_action {
     }
 }
 
-pub fn perform_action(player: &mut Player,
+pub fn perform_action(ctx: &mut NetContext,
                       entity_id: i64,
                       level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
                       template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
@@ -28,13 +29,13 @@ pub fn perform_action(player: &mut Player,
         Action::ExecBattleAction(action) => unimplemented_action! { action },
         Action::WaitBattleCondition(action) => unimplemented_action! { action },
         Action::PlayFlow(action) => unimplemented_action! { action },
-        Action::Collect(_) => collect_action(player, level_entity_data, template_config),
+        Action::Collect(_) => collect_action(ctx, level_entity_data, template_config),
         Action::LeisureInteract(action) => unimplemented_action! { action },
-        Action::UnlockTeleportTrigger(action) => unlock_teleport_trigger(player, action.params),
+        Action::UnlockTeleportTrigger(action) => unlock_teleport_trigger(ctx, action.params),
         Action::EnableTemporaryTeleport(action) => unimplemented_action! { action },
         Action::OpenSystemBoard(action) => unimplemented_action! { action },
         Action::OpenSystemFunction(action) => unimplemented_action! { action },
-        Action::ChangeSelfEntityState(action) => change_self_entity_state(player, entity_id, level_entity_data, template_config, action.params),
+        Action::ChangeSelfEntityState(action) => change_self_entity_state(ctx, entity_id, level_entity_data, template_config, action.params),
         Action::SetPlayerOperationRestriction(action) => unimplemented_action! { action },
         Action::Wait(action) => unimplemented_action! { action },
         Action::ChangeEntityState(action) => unimplemented_action! { action },
@@ -211,7 +212,7 @@ pub fn perform_action(player: &mut Player,
     }
 }
 
-fn collect_action(player: &mut Player,
+fn collect_action(ctx: &mut NetContext,
                   level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
                   template_config: &wicked_waifus_data::template_config_data::TemplateConfigData) {
     if let Some(reward_component) = level_entity_data.components_data.reward_component
@@ -227,11 +228,11 @@ fn collect_action(player: &mut Player,
             let usages = drop.drop_preview.iter()
                 .map(|(&id, &quantity)| ItemUsage { id, quantity })
                 .collect::<Vec<_>>();
-            let updated_items = player.inventory.add_items(&usages);
-            let normal_item_list = player.inventory.to_normal_item_list_filtered(
+            let updated_items = ctx.player.inventory.add_items(&usages);
+            let normal_item_list = ctx.player.inventory.to_normal_item_list_filtered(
                 &updated_items.keys().cloned().collect::<Vec<i32>>()
             );
-            player.notify(NormalItemUpdateNotify { normal_item_list, no_tips: false });
+            ctx.player.notify(NormalItemUpdateNotify { normal_item_list, no_tips: false });
             // UpdateHandBookActiveStateMapNotify
             let mut rewards: HashMap<i32, WR> = HashMap::new();
             rewards.insert(0, WR {
@@ -244,7 +245,7 @@ fn collect_action(player: &mut Player,
                     })
                     .collect::<Vec<_>>(),
             });
-            player.notify(ItemRewardNotify {
+            ctx.player.notify(ItemRewardNotify {
                 drop_id: reward_id,
                 reason: 15000,
                 magnification: 1,
@@ -256,11 +257,11 @@ fn collect_action(player: &mut Player,
 }
 
 #[inline(always)]
-fn unlock_teleport_trigger(player: &mut Player, action: UnlockTeleportTrigger) {
-    player.unlock_teleport(action.teleport_id)
+fn unlock_teleport_trigger(ctx: &mut NetContext, action: UnlockTeleportTrigger) {
+    ctx.player.unlock_teleport(action.teleport_id)
 }
 
-fn change_self_entity_state(player: &mut Player,
+fn change_self_entity_state(ctx: &mut NetContext,
                             entity_id: i64,
                             level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
                             template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
@@ -269,8 +270,7 @@ fn change_self_entity_state(player: &mut Player,
 
     // TODO: update Tag::CommonEntityTags too??
     let old_state = {
-        let world_ref = player.world.borrow();
-        let world = world_ref.get_world_entity();
+        let world = ctx.world.get_world_entity();
         let mut state_tag = query_components!(world, entity_id, StateTag).0.unwrap();
         let old_state = state_tag.state_tag_id;
         tracing::debug!("ChangeSelfEntityState: old state {old_state} -> new state: {state}");
@@ -291,7 +291,7 @@ fn change_self_entity_state(player: &mut Player,
                 if expected == state {
                     if let Some(actions) = state_change_behavior.action {
                         for sub in actions {
-                            perform_action(player, entity_id, level_entity_data, template_config, sub);
+                            perform_action(ctx, entity_id, level_entity_data, template_config, sub);
                         }
                     }
                 }
@@ -299,7 +299,7 @@ fn change_self_entity_state(player: &mut Player,
         }
     }
 
-    player.notify(EntityCommonTagNotify {
+    ctx.player.notify(EntityCommonTagNotify {
         id: entity_id,
         tags: vec![
             CommonTagData { tag_id: old_state, remove_tag_ids: false }, // Remove
@@ -307,7 +307,7 @@ fn change_self_entity_state(player: &mut Player,
         ],
     });
 
-    player.notify(EntityStateReadyNotify {
+    ctx.player.notify(EntityStateReadyNotify {
         entity_id,
         tag_id: state,
         ready: true, // TODO: Always true? or shall we compare it to something??

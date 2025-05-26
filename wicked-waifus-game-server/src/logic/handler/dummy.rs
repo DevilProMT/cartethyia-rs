@@ -1,4 +1,4 @@
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 
 macro_rules! dummy_handler {
     ($($type_name:ident;)*) => {
@@ -9,7 +9,7 @@ macro_rules! dummy_handler {
 
         $(::paste::paste! {
             pub fn [<on_ $type_name:snake _request>](
-                _player: &Player,
+                _ctx: &NetContext,
                 _request: [<$type_name Request>],
                 _response: &mut [<$type_name Response>],
             ) {

@@ -1,28 +1,30 @@
-use wicked_waifus_data::pb_components::condition::{CheckConditionGroup, CompareEntityState, Condition};
+use wicked_waifus_data::pb_components::condition::{
+    CheckConditionGroup, CompareEntityState, Condition,
+};
 
 use crate::logic::ecs::component::ComponentContainer;
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 use crate::logic::utils::tag_utils;
 use crate::query_components;
 
 macro_rules! unimplemented_condition {
-    ($condition:ident) => {
-        {
-            tracing::warn!("Condition check not implemented for: {:?}", $condition);
-            true
-        }
-    }
+    ($condition:ident) => {{
+        tracing::warn!("Condition check not implemented for: {:?}", $condition);
+        true
+    }};
 }
 
-pub fn check_condition(player: &Player,
-                       entity_id: i64,
-                       level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
-                       template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
-                       element: Condition) -> bool {
+pub fn check_condition(
+    ctx: &mut NetContext,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
+    element: Condition,
+) -> bool {
     match element {
         Condition::CompareTimePeriod(condition) => unimplemented_condition! { condition },
         Condition::CheckChildQuestFinished(condition) => unimplemented_condition! { condition },
-        Condition::CompareEntityState(condition) => compare_entity_state(player, entity_id, condition),
+        Condition::CompareEntityState(condition) => compare_entity_state(ctx, entity_id, condition),
         Condition::CheckEntityState(condition) => unimplemented_condition! { condition },
         Condition::CompareVar(condition) => unimplemented_condition! { condition },
         Condition::CompareWeather(condition) => unimplemented_condition! { condition },
@@ -36,7 +38,9 @@ pub fn check_condition(player: &Player,
         Condition::PreLevelPlay(condition) => unimplemented_condition! { condition },
         Condition::CheckLevelPlay(condition) => unimplemented_condition! { condition },
         Condition::CheckLevelPlayState(condition) => unimplemented_condition! { condition },
-        Condition::CheckLevelPlayCompleteNumber(condition) => unimplemented_condition! { condition },
+        Condition::CheckLevelPlayCompleteNumber(condition) => {
+            unimplemented_condition! { condition }
+        }
         Condition::CompareLevelPlayRewardState(condition) => unimplemented_condition! { condition },
         Condition::CheckItems(condition) => unimplemented_condition! { condition },
         Condition::HandInItems(condition) => unimplemented_condition! { condition },
@@ -68,14 +72,20 @@ pub fn check_condition(player: &Player,
         Condition::CheckEntityLocked(condition) => unimplemented_condition! { condition },
         Condition::CheckRogueAbilitySelect(condition) => unimplemented_condition! { condition },
         Condition::CompareFishingBoatState(condition) => unimplemented_condition! { condition },
-        Condition::CompleteCertainFishingEntrust(condition) => unimplemented_condition! { condition },
+        Condition::CompleteCertainFishingEntrust(condition) => {
+            unimplemented_condition! { condition }
+        }
         Condition::CompareFishingPrestigeLevel(condition) => unimplemented_condition! { condition },
-        Condition::CheckCertainFishingItemCount(condition) => unimplemented_condition! { condition },
+        Condition::CheckCertainFishingItemCount(condition) => {
+            unimplemented_condition! { condition }
+        }
         Condition::CompareFishingTechLevel(condition) => unimplemented_condition! { condition },
         Condition::ListenEntitySelfEvent(condition) => unimplemented_condition! { condition },
         Condition::CheckHookLockPoint(condition) => unimplemented_condition! { condition },
         Condition::CheckEntitesExist(condition) => unimplemented_condition! { condition },
-        Condition::CheckEntityHasSceneItemAttributeTag(condition) => unimplemented_condition! { condition },
+        Condition::CheckEntityHasSceneItemAttributeTag(condition) => {
+            unimplemented_condition! { condition }
+        }
         Condition::CheckTargetBattleAttribute(condition) => unimplemented_condition! { condition },
         Condition::CheckAlertAreaEnabled(condition) => unimplemented_condition! { condition },
         Condition::CompareAlertValue(condition) => unimplemented_condition! { condition },
@@ -99,7 +109,13 @@ pub fn check_condition(player: &Player,
         Condition::ParallaxAlign(condition) => unimplemented_condition! { condition },
         Condition::WaitBattleCondition(condition) => unimplemented_condition! { condition },
         Condition::CheckDirection(condition) => unimplemented_condition! { condition },
-        Condition::CheckConditionGroup(condition) => check_condition_group(player, entity_id, level_entity_data, template_config, condition),
+        Condition::CheckConditionGroup(condition) => check_condition_group(
+            ctx,
+            entity_id,
+            level_entity_data,
+            template_config,
+            condition,
+        ),
         Condition::CheckTreasureBeenClaimed(condition) => unimplemented_condition! { condition },
         Condition::RangeSphere(condition) => unimplemented_condition! { condition },
         Condition::CheckInRange(condition) => unimplemented_condition! { condition },
@@ -119,37 +135,44 @@ pub fn check_condition(player: &Player,
         Condition::CheckEntityGravityDirection(condition) => unimplemented_condition! { condition },
         Condition::CheckTeleControlState(condition) => unimplemented_condition! { condition },
         Condition::CheckEntityReward(condition) => unimplemented_condition! { condition },
-        Condition::CheckIsGramophonePlayingMusic(condition) => unimplemented_condition! { condition },
+        Condition::CheckIsGramophonePlayingMusic(condition) => {
+            unimplemented_condition! { condition }
+        }
         Condition::CheckBVBEvent(condition) => unimplemented_condition! { condition },
         Condition::FinishBvbChallenge(condition) => unimplemented_condition! { condition },
         Condition::CompareActorVar(condition) => unimplemented_condition! { condition },
-        Condition::CheckDangoCultivationProgress(condition) => unimplemented_condition! { condition },
+        Condition::CheckDangoCultivationProgress(condition) => {
+            unimplemented_condition! { condition }
+        }
     }
 }
 
-fn compare_entity_state(player: &Player, entity_id: i64, condition: CompareEntityState) -> bool {
+fn compare_entity_state(ctx: &NetContext, entity_id: i64, condition: CompareEntityState) -> bool {
     let actual = {
-        let world_ref = player.world.borrow();
-        let world = world_ref.get_world_entity();
+        let world = ctx.world.get_world_entity();
         let state_tag = query_components!(world, entity_id, StateTag).0.unwrap();
         state_tag.state_tag_id
     };
     let expected = tag_utils::get_tag_id_by_name(condition.state.as_str());
     // In theory, we can only check for equal or not equal
-    tracing::debug!("CompareEntityState: type {:?}, actual: {actual}, expected: {expected}", condition.compare);
+    tracing::debug!(
+        "CompareEntityState: type {:?}, actual: {actual}, expected: {expected}",
+        condition.compare
+    );
     condition.compare.cmp(&expected, &actual)
 }
 
-fn check_condition_group(player: &Player,
-                         entity_id: i64,
-                         level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
-                         template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
-                         condition: CheckConditionGroup) -> bool {
-
+fn check_condition_group(
+    ctx: &mut NetContext,
+    entity_id: i64,
+    level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+    template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
+    condition: CheckConditionGroup,
+) -> bool {
     let mut check = true;
     // TODO: Investigate if type has a meaning
     for element in condition.condition.conditions {
-        check = check_condition(player, entity_id, level_entity_data, template_config, element);
+        check = check_condition(ctx, entity_id, level_entity_data, template_config, element);
         if !check {
             break;
         }

@@ -6,10 +6,10 @@ use wicked_waifus_protocol::{
     PlayerAccessEffectAreaResponse,
 };
 
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 
 pub fn on_dark_coast_delivery_request(
-    _player: &mut Player,
+    _ctx: &mut NetContext,
     request: DarkCoastDeliveryRequest,
     response: &mut DarkCoastDeliveryResponse,
 ) {
@@ -40,36 +40,36 @@ pub fn on_dark_coast_delivery_request(
 }
 
 pub fn on_map_cancel_trace_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: MapCancelTraceRequest,
     response: &mut MapCancelTraceResponse,
 ) {
-    player.map_trace.traces.remove(&request.mark_id);
+    ctx.player.map_trace.traces.remove(&request.mark_id);
     response.mark_id = request.mark_id;
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_map_trace_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: MapTraceRequest,
     response: &mut MapTraceResponse,
 ) {
-    player.map_trace.traces.insert(request.mark_id);
+    ctx.player.map_trace.traces.insert(request.mark_id);
     response.mark_id = request.mark_id;
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_map_trace_info_request(
-    player: &Player,
+    ctx: &NetContext,
     _: MapTraceInfoRequest,
     response: &mut MapTraceInfoResponse,
 ) {
-    response.mark_id_list = player.map_trace.traces.iter().cloned().collect();
+    response.mark_id_list = ctx.player.map_trace.traces.iter().cloned().collect();
     response.error_code = ErrorCode::Success.into();
 }
 
 pub fn on_map_unlock_field_info_request(
-    _player: &mut Player,
+    _ctx: &NetContext,
     _: MapUnlockFieldInfoRequest,
     response: &mut MapUnlockFieldInfoResponse,
 ) {
@@ -81,7 +81,7 @@ pub fn on_map_unlock_field_info_request(
 }
 
 pub fn on_player_access_effect_area_request(
-    _player: &Player,
+    _ctx: &NetContext,
     request: PlayerAccessEffectAreaRequest,
     response: &mut PlayerAccessEffectAreaResponse,
 ) {

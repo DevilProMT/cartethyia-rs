@@ -1,17 +1,21 @@
 use tracing::debug;
 
-use wicked_waifus_protocol::{ErrorCode, PrivateChatDataRequest, PrivateChatDataResponse, PrivateChatHistoryRequest, PrivateChatHistoryResponse, PrivateChatOperateRequest, PrivateChatOperateResponse, PrivateChatOperateType, PrivateChatRequest, PrivateChatResponse};
+use wicked_waifus_protocol::{
+    ErrorCode, PrivateChatDataRequest, PrivateChatDataResponse, PrivateChatHistoryRequest,
+    PrivateChatHistoryResponse, PrivateChatOperateRequest, PrivateChatOperateResponse,
+    PrivateChatOperateType, PrivateChatRequest, PrivateChatResponse,
+};
 
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 
 pub fn on_private_chat_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: PrivateChatRequest,
     response: &mut PrivateChatResponse,
 ) {
-    let own_id = player.basic_info.id;
+    let own_id = ctx.player.basic_info.id;
     // TODO: Implement block and ban checks?? Ignore them for the time being
-    let result = player.player_chat.validate_message(
+    let result = ctx.player.player_chat.validate_message(
         own_id,
         request.target_uid,
         request.chat_content_type,
@@ -19,7 +23,7 @@ pub fn on_private_chat_request(
     );
     match result {
         Ok(message) => {
-            player.player_chat.add_message(own_id, message.clone());
+            ctx.player.player_chat.add_message(own_id, message.clone());
             // TODO: Check how to search a player from a different world(db search or session search)
             // let other_player = ...;
             // let other_player_message = message.clone();
@@ -37,38 +41,37 @@ pub fn on_private_chat_request(
             //     )
             // })
         }
-        Err(error_code) => response.error_code = error_code
+        Err(error_code) => response.error_code = error_code,
     };
 }
 
 pub fn on_private_chat_data_request(
-    _: &Player,
+    _: &NetContext,
     _: PrivateChatDataRequest,
     _: &mut PrivateChatDataResponse,
 ) {
-
 }
 
 pub fn on_private_chat_history_request(
-    player: &Player,
+    ctx: &NetContext,
     request: PrivateChatHistoryRequest,
     response: &mut PrivateChatHistoryResponse,
 ) {
-    match player.player_chat.build_private_chat_history_content_proto(
-        request.target_uid,
-        request.start_index,
-    ) {
+    match ctx
+        .player
+        .player_chat
+        .build_private_chat_history_content_proto(request.target_uid, request.start_index)
+    {
         Ok(chat_history_content_proto) => {
             response.error_code = ErrorCode::Success.into();
             response.data = Some(chat_history_content_proto)
         }
-        Err(error_code) => response.error_code = error_code
+        Err(error_code) => response.error_code = error_code,
     }
 }
 
-
 pub fn on_private_chat_operate_request(
-    _player: &Player,
+    _ctx: &NetContext,
     request: PrivateChatOperateRequest,
     response: &mut PrivateChatOperateResponse,
 ) {
@@ -78,7 +81,10 @@ pub fn on_private_chat_operate_request(
         response.error_code = ErrorCode::Success.into();
     } else {
         // TODO: Additional checks
-        debug!("on_private_chat_operate_request called for unimplemented case: {:?}", request);
+        debug!(
+            "on_private_chat_operate_request called for unimplemented case: {:?}",
+            request
+        );
         response.error_code = ErrorCode::Success.into();
     }
 }

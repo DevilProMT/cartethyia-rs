@@ -45,7 +45,7 @@ mod weapon;
 
 macro_rules! handle_request {
     ($($name:ident $(, $inner_package:ident)?;)*) => {
-        fn handle_request(player: &mut super::player::Player, mut msg: Message) {
+        fn handle_request(ctx: &mut super::thread_mgr::NetContext, mut msg: Message) {
             use ::wicked_waifus_protocol::{MessageID, Protobuf};
 
             ::paste::paste! {
@@ -53,16 +53,16 @@ macro_rules! handle_request {
                     $(
                         ::wicked_waifus_protocol::$($inner_package::)?[<$name Request>]::MESSAGE_ID => {
                             let Ok(request) = ::wicked_waifus_protocol::$($inner_package::)?[<$name Request>]::decode(&*msg.remove_payload()) else {
-                                tracing::debug!("failed to decode {}, player_id: {}", stringify!($($inner_package::)?[<$name Request>]), player.basic_info.id);
+                                tracing::debug!("failed to decode {}, player_id: {}", stringify!($($inner_package::)?[<$name Request>]), ctx.player.basic_info.id);
                                 return;
                             };
 
                             tracing::debug!("logic: processing request {}", stringify!($($inner_package::)?[<$name Request>]));
 
                             let mut response = ::wicked_waifus_protocol::$($inner_package::)?[<$name Response>]::default();
-                            [<on_ $($inner_package:snake _)? $name:snake _request>](player, request, &mut response);
+                            [<on_ $($inner_package:snake _)? $name:snake _request>](ctx, request, &mut response);
 
-                            player.respond(response, msg.get_rpc_id());
+                            ctx.player.respond(response, msg.get_rpc_id());
                         },
                     )*
                     unhandled => {
@@ -81,7 +81,7 @@ macro_rules! handle_request {
 
 macro_rules! handle_push {
     ($($name:ident $(, $inner_package:ident)?;)*) => {
-        fn handle_push(player: &mut super::player::Player, mut msg: Message) {
+        fn handle_push(ctx: &mut super::thread_mgr::NetContext, mut msg: Message) {
             use ::wicked_waifus_protocol::{MessageID, Protobuf};
 
             ::paste::paste! {
@@ -89,13 +89,13 @@ macro_rules! handle_push {
                     $(
                         ::wicked_waifus_protocol::$($inner_package::)?[<$name Push>]::MESSAGE_ID => {
                             let Ok(push) = ::wicked_waifus_protocol::$($inner_package::)?[<$name Push>]::decode(&*msg.remove_payload()) else {
-                                tracing::debug!("failed to decode {}, player_id: {}", stringify!($($inner_package::)?[<$name Push>]), player.basic_info.id);
+                                tracing::debug!("failed to decode {}, player_id: {}", stringify!($($inner_package::)?[<$name Push>]), ctx.player.basic_info.id);
                                 return;
                             };
 
                             tracing::debug!("logic: processing push {}", stringify!($($inner_package::)?[<$name Push>]));
 
-                            [<on_ $($inner_package:snake _)? $name:snake _push>](player, push);
+                            [<on_ $($inner_package:snake _)? $name:snake _push>](ctx, push);
                         },
                     )*
                     unhandled => {
@@ -297,15 +297,15 @@ handle_push! {
     VersionInfo;
 }
 
-pub fn handle_logic_message(player: &mut super::player::Player, msg: Message) {
+pub fn handle_logic_message(ctx: &mut super::thread_mgr::NetContext, msg: Message) {
     match msg {
-        Message::Request { .. } => handle_request(player, msg),
-        Message::Push { .. } => handle_push(player, msg),
+        Message::Request { .. } => handle_request(ctx, msg),
+        Message::Push { .. } => handle_push(ctx, msg),
         _ => tracing::warn!(
             "handle_logic_message: wrong message type: {}, message_id: {}, player_id: {}",
             msg.get_message_type(),
             msg.get_message_id(),
-            player.basic_info.id,
+            ctx.player.basic_info.id,
         ),
     }
 }

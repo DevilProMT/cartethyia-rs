@@ -5,15 +5,15 @@ use wicked_waifus_protocol::combat_message::{
 };
 use wicked_waifus_protocol::{
     AttributeChangedNotify, CombatCommon, DErrorResult, DamageExecuteRequest,
-    DamageExecuteResponse, EAttributeType, ERemoveEntityType, ErrorCode,
-    FsmConditionPassRequest, FsmConditionPassResponse, GameplayAttributeData,
-    PlayerBattleStateChangeNotify, SwitchRoleRequest, SwitchRoleResponse,
+    DamageExecuteResponse, EAttributeType, ERemoveEntityType, ErrorCode, FsmConditionPassRequest,
+    FsmConditionPassResponse, GameplayAttributeData, PlayerBattleStateChangeNotify,
+    SwitchRoleRequest, SwitchRoleResponse,
 };
 
 use wicked_waifus_data::damage_data;
 
 use crate::logic::ecs::component::ComponentContainer;
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 use crate::logic::utils::world_util;
 use crate::query_components;
 
@@ -49,7 +49,7 @@ fn create_combat_notify(
 }
 
 pub fn on_combat_message_combat_send_pack_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     request: CombatSendPackRequest,
     response: &mut CombatSendPackResponse,
 ) {
@@ -58,13 +58,13 @@ pub fn on_combat_message_combat_send_pack_request(
             if let Some(ref request_message) = request_data.message {
                 match request_message {
                     combat_request_data::Message::SwitchRoleRequest(ref request) => {
-                        handle_switch_role_request(player, request_data, request, response);
+                        handle_switch_role_request(ctx, request_data, request, response);
                     }
                     combat_request_data::Message::FsmConditionPassRequest(ref request) => {
-                        handle_fsm_condition_request(player, request_data, request, response);
+                        handle_fsm_condition_request(ctx, request_data, request, response);
                     }
                     combat_request_data::Message::DamageExecuteRequest(ref request) => {
-                        handle_damage_execute_request(player, request_data, request, response);
+                        handle_damage_execute_request(ctx, request_data, request, response);
                     }
                     _ => {}
                 }
@@ -75,13 +75,18 @@ pub fn on_combat_message_combat_send_pack_request(
 }
 
 fn handle_switch_role_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     combat_request: &CombatRequestData,
     request: &SwitchRoleRequest,
     response: &mut CombatSendPackResponse,
 ) {
     // Find current formation and update current role
-    if let Some(formation) = player.formation_list.values_mut().find(|f| f.is_current) {
+    if let Some(formation) = ctx
+        .player
+        .formation_list
+        .values_mut()
+        .find(|f| f.is_current)
+    {
         formation.cur_role = request.role_id;
 
         let receive_pack = response
@@ -105,7 +110,7 @@ fn handle_switch_role_request(
 }
 
 fn handle_damage_execute_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     combat_request: &CombatRequestData,
     request: &DamageExecuteRequest,
     response: &mut CombatSendPackResponse,
@@ -114,8 +119,7 @@ fn handle_damage_execute_request(
         .receive_pack_notify
         .get_or_insert_with(Default::default);
 
-    let mut world_ref = player.world.borrow_mut();
-    let world = world_ref.get_mut_world_entity();
+    let world = ctx.world.get_mut_world_entity();
     let config_id = world.get_config_id(request.attacker_entity_id.try_into().unwrap());
     let mut damage = 1; // TODO: Fix the formula with real parameters(10 field equation)
     if config_id.to_string().len() == 4 {
@@ -160,6 +164,7 @@ fn handle_damage_execute_request(
             ..Default::default()
         }),
     ));
+    let mut entities_to_remove = Vec::new();
     if let Some((value, _)) = query_components!(world, request.target_entity_id, Attribute)
         .0
         .unwrap()
@@ -185,19 +190,18 @@ fn handle_damage_execute_request(
             }),
         ));
         if updated_value == 0 {
-            world_util::remove_entity(
-                player,
-                request.target_entity_id,
-                ERemoveEntityType::HpIsZero,
-            );
+            entities_to_remove.push(request.target_entity_id);
         }
     }
 
+    for entity in entities_to_remove {
+        world_util::remove_entity(ctx, entity, ERemoveEntityType::HpIsZero);
+    }
     response.error_code = ErrorCode::Success.into();
 }
 
 fn handle_battle(
-    player: &mut Player,
+    ctx: &mut NetContext,
     combat_request: &CombatRequestData,
     response: &mut CombatSendPackResponse,
     condition: bool,
@@ -209,15 +213,14 @@ fn handle_battle(
     receive_pack.data.push(create_combat_notify(
         combat_request.combat_common.unwrap(),
         combat_notify_data::Message::PlayerBattleStateChangeNotify(PlayerBattleStateChangeNotify {
-            player_id: player.basic_info.id,
-
+            player_id: ctx.player.basic_info.id,
             in_battle: condition,
         }),
     ));
 }
 
 fn handle_fsm_condition_request(
-    player: &mut Player,
+    ctx: &mut NetContext,
     combat_request: &CombatRequestData,
     request: &FsmConditionPassRequest,
     response: &mut CombatSendPackResponse,
@@ -238,5 +241,5 @@ fn handle_fsm_condition_request(
             }),
         }),
     ));
-    handle_battle(player, combat_request, response, true);
+    handle_battle(ctx, combat_request, response, true);
 }

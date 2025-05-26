@@ -1,9 +1,9 @@
 use wicked_waifus_protocol::{LordGymInfoRequest, LordGymInfoResponse};
 
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 
 pub fn on_lord_gym_info_request(
-    _player: &Player,
+    _ctx: &NetContext,
     request: LordGymInfoRequest,
     _response: &mut LordGymInfoResponse,
 ) {

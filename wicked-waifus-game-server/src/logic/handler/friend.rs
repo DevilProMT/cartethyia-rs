@@ -1,11 +1,11 @@
-use crate::logic::player::Player;
+use crate::logic::thread_mgr::NetContext;
 use wicked_waifus_protocol::{
     ErrorCode, FriendAllRequest, FriendAllResponse, FriendInfo, PlayerBasicInfoGetRequest,
     PlayerBasicInfoGetResponse, PlayerDetails,
 };
 
 pub fn on_friend_all_request(
-    _player: &Player,
+    _ctx: &NetContext,
     _: FriendAllRequest,
     response: &mut FriendAllResponse,
 ) {
@@ -23,7 +23,7 @@ pub fn on_friend_all_request(
 }
 
 // pub fn on_friend_apply_send_request(
-//     _player: &Player,
+//     _ctx: &NetContext,
 //     _request: FriendApplySendRequest,
 //     _response: &mut FriendApplySendResponse,
 // ) {
@@ -31,7 +31,7 @@ pub fn on_friend_all_request(
 // }
 //
 // pub fn on_friend_recently_team_request(
-//     _player: &Player,
+//     _ctx: &NetContext,
 //     _request: FriendRecentlyTeamRequest,
 //     _response: &mut FriendRecentlyTeamResponse,
 // ) {
@@ -39,7 +39,7 @@ pub fn on_friend_all_request(
 // }
 
 pub fn on_player_basic_info_get_request(
-    _player: &Player,
+    _ctx: &NetContext,
     request: PlayerBasicInfoGetRequest,
     response: &mut PlayerBasicInfoGetResponse,
 ) {
