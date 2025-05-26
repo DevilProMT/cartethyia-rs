@@ -6,7 +6,7 @@ use crate::logic::player::ItemUsage;
 use crate::logic::role::{Role, RoleFormation};
 use crate::logic::thread_mgr::NetContext;
 use crate::logic::utils::world_util::add_player_entities;
-use crate::modify_component;
+use crate::{modify_component, query_components};
 use wicked_waifus_protocol::{
     ArrayIntInt, ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse,
     ERemoveEntityType, EntityAddNotify, EntityEquipSkinChangeNotify, EntityFlySkinChangeData,
@@ -62,6 +62,7 @@ pub fn on_update_formation_request(
     response: &mut UpdateFormationResponse,
 ) {
     let world = ctx.world.get_mut_world_entity();
+    let player = &mut ctx.player;
 
     for formation in request.formations {
         let formation_id = formation.formation_id;
@@ -69,65 +70,29 @@ pub fn on_update_formation_request(
         let is_current = formation.is_current;
 
         if is_current {
-            // update player current formation id
-            ctx.player.cur_formation_id = formation_id;
-
-            // search old formation id and set real_formation_id, set is_current to false
-            let mut real_formation_id = formation_id;
-            if let Some(rf) = ctx
-                .player
-                .formation_list
-                .values_mut()
-                .find(|rf| rf.is_current && rf.id != formation_id)
-            {
-                real_formation_id = rf.id;
-                rf.is_current = false;
-            }
-
-            if let Some(old_formation) = ctx.player.formation_list.get(&real_formation_id) {
-                let removed_entities: Vec<i64> = old_formation
+            if let Some(old_formation) = player.formation_list.get(&formation_id) {
+                let mut removed_entities: Vec<i64> = old_formation
                     .role_ids
                     .iter()
                     .map(|&role_id| world.get_entity_id(role_id))
                     .collect();
+                for id in removed_entities.clone() {
+                    if let (Some(concomitant),) = query_components!(world, id, Concomitant) {
+                        removed_entities.extend(concomitant.custom_entity_ids.clone());
+                    };
+                }
                 removed_entities.iter().for_each(|&entity_id| {
                     world.remove_entity(entity_id as i32);
                 });
-                ctx.player
-                    .notify(ctx.player.build_player_entity_remove_notify(
-                        removed_entities,
-                        ERemoveEntityType::RemoveTypeNormal,
-                    ));
-            }
-
-            let added_roles: Vec<Role> = formation
-                .role_ids
-                .iter()
-                .map(|&role_id| Role::new(role_id))
-                .collect();
-
-            if !added_roles.is_empty() {
-                // add new roles
-                add_player_entities(ctx.player, world)
-            }
-
-            // send update group formation notify
-            ctx.player
-                .notify(ctx.player.build_update_group_formation_notify(
-                    RoleFormation {
-                        id: formation_id,
-                        cur_role,
-                        role_ids: formation.role_ids.clone(),
-                        is_current,
-                    },
-                    world,
+                player.notify(player.build_player_entity_remove_notify(
+                    removed_entities,
+                    ERemoveEntityType::RemoveTypeForce,
                 ));
-
-            response.formation = Some(formation.clone());
+            }
         }
 
         // update all formation and check formation_list
-        ctx.player
+        player
             .formation_list
             .entry(formation_id)
             .and_modify(|r| {
@@ -138,13 +103,41 @@ pub fn on_update_formation_request(
             .or_insert(RoleFormation {
                 id: formation_id,
                 cur_role: formation.cur_role,
-                role_ids: formation.role_ids,
+                role_ids: formation.role_ids.clone(),
                 is_current,
             });
+
+        if is_current {
+            // update player current formation id
+            player.cur_formation_id = formation_id;
+
+            // search old formation id and set real_formation_id, set is_current to false
+            if let Some(rf) = player
+                .formation_list
+                .values_mut()
+                .find(|rf| rf.is_current && rf.id != formation_id)
+            {
+                rf.is_current = false;
+            }
+
+            add_player_entities(player, player.formation_list.get(&formation_id).unwrap(), world);
+
+            // send update group formation notify
+            player.notify(player.build_update_group_formation_notify(
+                RoleFormation {
+                    id: formation_id,
+                    cur_role,
+                    role_ids: formation.role_ids.clone(),
+                    is_current,
+                },
+                world,
+            ));
+
+            response.formation = Some(formation.clone());
+        }
     }
 
-    ctx.player
-        .notify(ctx.player.build_update_formation_notify());
+    player.notify(player.build_update_formation_notify());
 
     response.error_code = ErrorCode::Success.into();
 }

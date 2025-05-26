@@ -21,7 +21,7 @@ pub fn on_achievement_info_request(
 
     for achievement in achievement_data::iter() {
         data.entry(achievement.group_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(achievement.id);
     }
 

@@ -21,7 +21,7 @@ impl ExploreTools {
         PlayerExploreToolsData {
             unlocked_skill_list: self.unlocked_explore_skills.iter().cloned().collect(),
             active_skill_id: self.active_explore_skill,
-            roulette: self.roulette.iter().cloned().collect(),
+            roulette: self.roulette.to_vec(),
         }
     }
 

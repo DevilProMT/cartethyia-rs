@@ -423,10 +423,6 @@ impl Player {
         }
     }
 
-    pub fn build_player_entity_add_notify(&self, player: &mut Player, world: &mut WorldEntity) {
-        add_player_entities(player, world)
-    }
-
     pub fn build_player_entity_remove_notify(
         &self,
         entities: Vec<i64>,
