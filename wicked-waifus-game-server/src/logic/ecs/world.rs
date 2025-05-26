@@ -7,6 +7,7 @@ use std::collections::hash_map::{Keys, Values};
 use std::collections::HashMap;
 use wicked_waifus_protocol::FightBuffInformation;
 
+#[derive(Default)]
 pub struct WorldEntity {
     components: HashMap<i32, Vec<RefCell<ComponentContainer>>>,
     entity_manager: EntityManager,
@@ -15,7 +16,7 @@ pub struct WorldEntity {
 
 pub struct World {
     pub player_cur_map_id: i32,
-    pub world_entitys: HashMap<i32, WorldEntity>, // i32 -> map_id
+    pub world_entities: HashMap<i32, WorldEntity>, // i32 -> map_id
     pub in_world_players: HashMap<i32, InWorldPlayer>, // joined players metadata
 }
 
@@ -23,7 +24,7 @@ impl World {
     pub fn new() -> Self {
         Self {
             player_cur_map_id: 8,
-            world_entitys: HashMap::new(),
+            world_entities: HashMap::new(),
             in_world_players: HashMap::new(),
         }
     }
@@ -42,13 +43,13 @@ impl World {
     }
 
     pub fn get_mut_world_entity(&mut self) -> &mut WorldEntity {
-        self.world_entitys
+        self.world_entities
             .get_mut(&self.player_cur_map_id)
             .unwrap_or_else(|| panic!("Failed to get cur map data: {}", self.player_cur_map_id))
     }
 
     pub fn get_world_entity(&self) -> &WorldEntity {
-        self.world_entitys
+        self.world_entities
             .get(&self.player_cur_map_id)
             .unwrap_or_else(|| panic!("Failed to get cur map data: {}", self.player_cur_map_id))
     }
@@ -64,7 +65,7 @@ impl WorldEntity {
             entity,
             self.components
                 .entry(entity.entity_id)
-                .or_insert(Vec::new()),
+                .or_default(),
         )
     }
 
@@ -113,15 +114,5 @@ impl WorldEntity {
 
     pub fn generate_role_permanent_buffs(&mut self, entity_id: i64) -> Vec<FightBuffInformation> {
         self.buff_manager.create_permanent_buffs(entity_id)
-    }
-}
-
-impl Default for WorldEntity {
-    fn default() -> Self {
-        Self {
-            components: HashMap::new(),
-            entity_manager: EntityManager::default(),
-            buff_manager: BufManager::default(),
-        }
     }
 }
