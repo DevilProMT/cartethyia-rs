@@ -6,9 +6,9 @@ use wicked_waifus_data::{calabash_develop_reward_data, calabash_level_data, moti
 use wicked_waifus_protocol::message::Message;
 use wicked_waifus_protocol::player_attr::Value;
 use wicked_waifus_protocol::{
-    AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify, CalabashCfg, CalabashDevelopConditionState, CalabashDevelopInfo, CalabashMsg, CalabashMsgNotify, ControlInfoNotify, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify, EntityRemoveInfo, EntityRemoveNotify, FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FlyEquipAddNotify, FlySkinEquipData, GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify, LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MonthCardDailyRewardNotify, MoonChasingTargetGetCountNotify, MoonChasingTrackMoonHandbookRewardNotify, NormalItemUpdateNotify, PassiveSkillNotify, PbGetRoleListNotify, PlayerAttr, PlayerAttrKey, PlayerAttrNotify, PlayerAttrType, PlayerFightFormations, PlayerVarNotify, ProtocolUnit, PushContextIdNotify, PushDataCompleteNotify, RefreshVisionEquipGroupData, RoguelikeCurrencyNotify, RoleChangeUnlockNotify, RoleFavor, RoleFavorListNotify, RoleFlyEquipNotify, RoleMotion, RoleMotionListNotify, SettingNotify, TeleportUpdateNotify, UnlockSkinDataNotify, UpdateFormationNotify, UpdateGroupFormationNotify
+    AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify, CalabashCfg, CalabashDevelopConditionState, CalabashDevelopInfo, CalabashMsg, CalabashMsgNotify, ControlInfoNotify, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify, EntityRemoveInfo, EntityRemoveNotify, FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FlyEquipAddNotify, FlySkinEquipData, GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify, LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MonthCardDailyRewardNotify, MoonChasingTargetGetCountNotify, MoonChasingTrackMoonHandbookRewardNotify, NormalItemUpdateNotify, PassiveSkillNotify, PbGetRoleListNotify, PlayerAttr, PlayerAttrKey, PlayerAttrNotify, PlayerAttrType, PlayerFightFormations, PlayerVarNotify, ProtocolUnit, PushContextIdNotify, PushDataCompleteNotify, RoguelikeCurrencyNotify, RoleChangeUnlockNotify, RoleFavor, RoleFavorListNotify, RoleFlyEquipNotify, RoleMotion, RoleMotionListNotify, SettingNotify, TeleportUpdateNotify, UnlockSkinDataNotify, UpdateFormationNotify, UpdateGroupFormationNotify
 };
-use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
+use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData, RefreshVisionEquipGroupData};
 
 use super::ecs::world::World;
 use super::role::{Role, RoleFormation};
@@ -690,6 +690,8 @@ impl Player {
             month_card: Some(self.month_card.build_save_data()),
             mc_element: Some(self.mc_element.build_save_data()),
             unlocked_skins: Some(self.unlocked_skins.build_save_data()),
+            used_incr_ids: self.used_incr_ids.iter().copied().collect(),
+            vision_equip_groups: self.vision_equip_groups.clone(),
         }
     }
 

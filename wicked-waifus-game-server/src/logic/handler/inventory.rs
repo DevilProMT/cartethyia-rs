@@ -12,7 +12,7 @@ use wicked_waifus_protocol::{
     RolePhantomPropInfo, VisionEquipGroupInfoRequest, VisionEquipGroupInfoResponse, WeaponItem,
     WeaponItemRequest, WeaponItemResponse,
 };
-use wicked_waifus_protocol::RefreshVisionEquipGroupData;
+use wicked_waifus_protocol_internal::RefreshVisionEquipGroupData;
 
 const MAX_POSITIONS: usize = 5;
 
@@ -404,7 +404,7 @@ pub fn on_phantom_put_on_request(
     response: &mut PhantomPutOnResponse,
 ) {
     let player = &mut ctx.player;
-    
+
     let position = request.pos;
     if position < 0 || position >= MAX_POSITIONS as i32 {
         response.error_code = ErrorCode::ErrPhantomInvalidPos as i32;

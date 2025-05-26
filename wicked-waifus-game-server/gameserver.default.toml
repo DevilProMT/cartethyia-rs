@@ -35,6 +35,7 @@ unlock_all_functions = true
 unlock_all_guides = false
 unlock_all_tutorials = false
 unlock_all_teleporter = false
+unlock_max_energy = false
 unlock_all_role_skins = false
 # TODO: Set this to the same value as unlock_all_role_skins, without it, it fails(maybe jinshi weapon skin problem??)
 unlock_all_weapon_skins = false
