@@ -1,29 +1,18 @@
 pub use in_world_player::InWorldPlayer;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use wicked_waifus_commons::time_util;
-use wicked_waifus_data::motion_data;
+use wicked_waifus_data::{calabash_develop_reward_data, calabash_level_data, motion_data};
 use wicked_waifus_protocol::message::Message;
 use wicked_waifus_protocol::player_attr::Value;
 use wicked_waifus_protocol::{
-    AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify,
-    ControlInfoNotify, EEntityType, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify,
-    EntityAddNotify, EntityConfigType, EntityPb, EntityRemoveInfo, EntityRemoveNotify, EntityState,
-    FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FlyEquipAddNotify,
-    FlySkinEquipData, GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify,
-    LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MonthCardDailyRewardNotify,
-    MoonChasingTargetGetCountNotify, MoonChasingTrackMoonHandbookRewardNotify,
-    NormalItemUpdateNotify, PassiveSkillNotify, PbGetRoleListNotify, PlayerAttr, PlayerAttrKey,
-    PlayerAttrNotify, PlayerAttrType, PlayerFightFormations, PlayerVarNotify, ProtocolUnit,
-    PushContextIdNotify, PushDataCompleteNotify, RoguelikeCurrencyNotify, RoleChangeUnlockNotify,
-    RoleFavor, RoleFavorListNotify, RoleFlyEquipNotify, RoleMotion, RoleMotionListNotify,
-    SettingNotify, TeleportUpdateNotify, UnlockSkinDataNotify, UpdateFormationNotify,
-    UpdateGroupFormationNotify,
+    AdventreTask, AdventureManualData, AdventureUpdateNotify, AdviceSettingNotify, BuffItemNotify, CalabashCfg, CalabashDevelopConditionState, CalabashDevelopInfo, CalabashMsg, CalabashMsgNotify, ControlInfoNotify, ERemoveEntityType, EnergyInfo, EnergyUpdateNotify, EntityRemoveInfo, EntityRemoveNotify, FavorItem, FightFormationNotifyInfo, FightRoleInfo, FightRoleInfos, FlyEquipAddNotify, FlySkinEquipData, GroupFormation, HostTeleportUnlockNotify, InstDataNotify, ItemPkgOpenNotify, LevelPlayInfoNotify, LivingStatus, MailInfosNotify, MonthCardDailyRewardNotify, MoonChasingTargetGetCountNotify, MoonChasingTrackMoonHandbookRewardNotify, NormalItemUpdateNotify, PassiveSkillNotify, PbGetRoleListNotify, PlayerAttr, PlayerAttrKey, PlayerAttrNotify, PlayerAttrType, PlayerFightFormations, PlayerVarNotify, ProtocolUnit, PushContextIdNotify, PushDataCompleteNotify, RefreshVisionEquipGroupData, RoguelikeCurrencyNotify, RoleChangeUnlockNotify, RoleFavor, RoleFavorListNotify, RoleFlyEquipNotify, RoleMotion, RoleMotionListNotify, SettingNotify, TeleportUpdateNotify, UnlockSkinDataNotify, UpdateFormationNotify, UpdateGroupFormationNotify
 };
 use wicked_waifus_protocol_internal::{PlayerBasicData, PlayerRoleData, PlayerSaveData};
 
+use super::ecs::world::World;
 use super::role::{Role, RoleFormation};
-use crate::logic::components::RoleSkin;
+use super::utils::world_util::add_player_entities;
 use crate::logic::ecs::world::WorldEntity;
 use crate::logic::player::basic_info::PlayerBasicInfo;
 use crate::logic::player::explore_tools::ExploreTools;
@@ -42,15 +31,8 @@ use crate::logic::player::player_month_card::PlayerMonthCard;
 use crate::logic::player::player_teleports::{PlayerTeleport, PlayerTeleports};
 use crate::logic::player::player_tutorials::{PlayerTutorial, PlayerTutorials};
 use crate::logic::player::Element::Spectro;
-use crate::logic::{
-    components::{
-        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, ParaglidingSkin,
-        PlayerOwnedEntityMarker, Position, SoarWingSkin, Visibility, VisionSkill, WeaponSkin,
-    },
-    ecs::component::ComponentContainer,
-};
 use crate::session::Session;
-use crate::{config, create_player_entity_pb};
+use crate::config;
 use crate::logic::player::player_unlocked_skins::PlayerUnlockedSkins;
 
 mod basic_info;
@@ -95,6 +77,16 @@ pub struct Player {
     pub world_owner_id: i32,
     pub last_save_time: u64,
     pub quadrant_id: u64,
+    //pub vision_equip_groups: Vec<VisionEquipGroup>,
+    pub vision_equip_groups: Vec<RefreshVisionEquipGroupData>,
+    pub used_incr_ids: HashSet<i32>,
+}
+
+#[derive(Clone)]
+pub struct VisionEquipGroup {
+    pub name: String,
+    pub inc_ids: [i32; 5],
+    pub role_id: i32,
 }
 
 impl Player {
@@ -116,6 +108,7 @@ impl Player {
         self.notify(ControlInfoNotify {
             forbid_list: vec![], // Disable function prohibition
         });
+        self.notify(self.build_calabash_msg_notify()); // calabash
         self.notify(self.explore_tools.build_explore_tool_all_notify());
         self.notify(self.explore_tools.build_vision_explore_skill_notify());
         self.notify(self.explore_tools.build_roulette_update_notify());
@@ -430,16 +423,8 @@ impl Player {
         }
     }
 
-    pub fn build_player_entity_add_notify(&self, role_list: Vec<Role>, world: &mut WorldEntity) -> EntityAddNotify {
-        create_player_entity_pb!(
-            role_list,
-            self.basic_info.cur_map_id,
-            self,
-            self.basic_info.id,
-            self.location.position.clone(),
-            self.explore_tools,
-            world
-        )
+    pub fn build_player_entity_add_notify(&self, player: &mut Player, world: &mut WorldEntity) {
+        add_player_entities(player, world)
     }
 
     pub fn build_player_entity_remove_notify(
@@ -585,6 +570,15 @@ impl Player {
     pub fn load_from_save(save_data: PlayerSaveData) -> Self {
         let role_data = save_data.role_data.unwrap_or_default();
 
+            let mut used_incr_ids = HashSet::new();
+            for role in &role_data.role_list {
+                for (_, &inc_id) in &role.phantom_map {
+                    if inc_id != 0 {
+                        used_incr_ids.insert(inc_id);
+                    }
+                }
+            }
+
         Self {
             session: None,
             basic_info: PlayerBasicInfo::load_from_save(
@@ -660,6 +654,9 @@ impl Player {
             world_owner_id: 0,
             last_save_time: time_util::unix_timestamp(),
             quadrant_id: 0,
+            vision_equip_groups: Vec::new(),
+            //vision_equip_groups: vec![],
+            used_incr_ids,        
         }
     }
 
@@ -707,6 +704,63 @@ impl Player {
                 .values()
                 .map(|role| role.to_protobuf())
                 .collect(),
+        }
+    }
+
+    pub fn build_calabash_msg_notify(&self) -> CalabashMsgNotify {
+        let calabash_level_data = calabash_level_data::iter();
+
+        let calabash_max_lvl = calabash_level_data
+            .clone()
+            .map(|data| data.level)
+            .max()
+            .unwrap_or(0);
+
+        let calabash_condition = calabash_level_data
+            .clone()
+            .find(|data| data.level == calabash_max_lvl)
+            .map(|data| data.level_up_condition)
+            .unwrap_or(0);
+
+        let calabash_max_exp = calabash_level_data
+            .clone()
+            .find(|data| data.level == calabash_max_lvl)
+            .map(|data| data.level_up_exp)
+            .unwrap_or(0);
+
+        let catch_gain: std::collections::HashMap<i32, i32> = calabash_level_data
+            .clone()
+            .map(|data| (data.level, data.temp_catch_gain))
+            .collect();
+
+        let calabash_develop_rewards: Vec<CalabashDevelopInfo> = calabash_develop_reward_data::iter()
+            .filter(|dev_reward| dev_reward.is_show)
+            .map(|dev_reward| CalabashDevelopInfo {
+                monster_id: dev_reward.monster_id,
+                unlock_conditions: dev_reward
+                    .develop_condition
+                    .iter()
+                    .map(|&condition_id| CalabashDevelopConditionState {
+                        condition_id,
+                        rewarded: true,
+                    })
+                    .collect(),
+            })
+            .collect();
+
+        CalabashMsgNotify {
+            calabash_cfg: Some(CalabashCfg {
+                level_up_exp: calabash_max_exp,
+                level_up_condition: calabash_condition,
+                catch_gain,
+            }),
+            calabash_msg: Some(CalabashMsg {
+                level: calabash_max_lvl,
+                exp: calabash_max_exp,
+                unlocked_levels: calabash_level_data.clone().map(|data| data.level).collect(),
+                unlocked_develop_rewards: calabash_develop_rewards,
+                identify_guarantee_count: 0,
+            }),
         }
     }
 

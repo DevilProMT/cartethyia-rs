@@ -141,7 +141,7 @@ async fn on_start_player_session_request(
         player_id: player_data.player_id,
         enter_rpc_id: message.rpc_id,
         session: session.clone(),
-        player_save_data,
+        player_save_data: Box::new(player_save_data),
     });
 
     session_mgr.add(session.clone());

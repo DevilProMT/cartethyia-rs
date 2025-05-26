@@ -51,6 +51,7 @@ pub struct Role {
     pub element_energy: i32,
     pub favor_level: i32,
     pub favor_exp: i32,
+    pub phantom_map: HashMap<i32, i32>,
     pub wing_skin_id: i32,
     pub fly_skin_id: i32,
     pub weapon_skin_id: i32,
@@ -178,6 +179,7 @@ impl Role {
             element_energy: base_stats.element_energy,
             favor_level: 0,
             favor_exp: 0,
+            phantom_map: HashMap::new(),
             wing_skin_id: 0,
             fly_skin_id: 0,
             weapon_skin_id: 0,
@@ -189,6 +191,7 @@ impl Role {
         let mut base_stats = get_role_props_by_level(self.role_id, self.level, self.breakthrough);
         // TODO: add weapon and echo stats
         // TODO: Integrity check, value has to be between 0 and max
+        // i think now implemented in EnergySystem
         base_stats.life = self.hp;
         base_stats.energy = self.energy;
         base_stats.special_energy_1 = self.special_energy_1;
@@ -260,6 +263,7 @@ impl Role {
                 element_energy: data.stats.unwrap().element_energy,
                 favor_level: data.favor_level,
                 favor_exp: data.favor_exp,
+                phantom_map: data.phantom_map,
                 wing_skin_id: data.wing_skin_id,
                 fly_skin_id: data.fly_skin_id,
                 weapon_skin_id: data.weapon_skin_id,
@@ -275,7 +279,7 @@ impl Role {
             exp: self.exp,
             breakthrough: self.breakthrough,
             skill_map: self.skill_map.clone(),
-            // phantom_map: Default::default(),
+            phantom_map: self.phantom_map.clone(),
             star: self.star,
             favor: self.favor,
             create_time: self.create_time,

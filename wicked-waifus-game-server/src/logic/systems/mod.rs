@@ -4,6 +4,8 @@ use super::{ecs::world::World, player::Player};
 
 mod movement;
 use movement::MovementSystem;
+mod energy_regen;
+use energy_regen::EnergyRegenSystem;
 
 macro_rules! enabled_systems {
     ($($sys:ident;)*) => {
@@ -25,4 +27,5 @@ pub trait System: Send + Sync + 'static {
 
 enabled_systems! {
     MovementSystem;
+    EnergyRegenSystem;
 }

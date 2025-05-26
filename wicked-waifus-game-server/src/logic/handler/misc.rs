@@ -1,9 +1,6 @@
+use wicked_waifus_data::{adventure_task_data, dungeon_detection_data, monster_detection_data, silent_area_detection_data};
 use wicked_waifus_protocol::{
-    ErrorCode, InputSettingRequest, InputSettingResponse, InputSettingUpdateRequest,
-    InputSettingUpdateResponse, LanguageSettingUpdateRequest, LanguageSettingUpdateResponse,
-    MonthCardRequest, MonthCardResponse, ServerPlayStationPlayOnlyStateRequest,
-    ServerPlayStationPlayOnlyStateResponse, UpdateVoxelEnvRequest, UpdateVoxelEnvResponse,
-    VersionInfoPush, WebSignRequest, WebSignResponse, Zih,
+    AdventreTask, AdventureManualData, AdventureManualRequest, AdventureManualResponse, DetectionTarget, DetectionUnlock, ErrorCode, InputSettingRequest, InputSettingResponse, InputSettingUpdateRequest, InputSettingUpdateResponse, LanguageSettingUpdateRequest, LanguageSettingUpdateResponse, MonthCardRequest, MonthCardResponse, ServerPlayStationPlayOnlyStateRequest, ServerPlayStationPlayOnlyStateResponse, UpdateVoxelEnvRequest, UpdateVoxelEnvResponse, VersionInfoPush, WebSignRequest, WebSignResponse, Zih
 };
 
 use crate::logic::thread_mgr::NetContext;
@@ -74,4 +71,46 @@ pub fn on_update_voxel_env_request(
 ) {
     response.server_cave_mode = request.server_cave_mode;
     response.error_code = ErrorCode::Success.into();
+}
+
+pub fn on_adventure_manual_request(
+    _ctx: &NetContext,
+    _request: AdventureManualRequest,
+    response: &mut AdventureManualResponse,
+) {
+    response.error_code = ErrorCode::Success.into();
+    response.adventure_manual_data = Some(
+        AdventureManualData {
+            adventre_task: adventure_task_data::iter()
+                .map(|task| AdventreTask {
+                    adventre_progress: 1,
+                    id: task.id,
+                    state: 2,
+                })
+                .collect(),
+            now_chapter: 9,
+            received_chapter: 9,
+        },
+    );
+    response.detection_target = dungeon_detection_data::iter()
+        .map(|dungeon| DetectionTarget {
+            detection_id: dungeon.id,
+            id: dungeon.dungeon_id,
+            is_trace: 8,
+            unlock_state: true,
+            r#type: 1,
+            ..Default::default()
+        })
+        .collect();
+    response.detection_unlocks = Some(DetectionUnlock {
+        dungeon_detection_ids: dungeon_detection_data::iter()
+            .map(|dungeon| dungeon.id)
+            .collect(),
+        monster_detection_ids: monster_detection_data::iter()
+            .map(|monster| monster.id)
+            .collect(),
+        silent_area_detection_ids: silent_area_detection_data::iter()
+            .map(|silent_area| silent_area.id)
+            .collect(),
+    });
 }

@@ -45,6 +45,8 @@ impl_component_container! {
     SoarWingSkin;
     ParaglidingSkin;
     WeaponSkin;
+    CharacterAttach;
+    LogicState;
 }
 
 pub trait Component {

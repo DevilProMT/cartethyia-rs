@@ -1,6 +1,6 @@
 use wicked_waifus_commons::time_util;
 use wicked_waifus_protocol_internal::PlayerSaveData;
-use wicked_waifus_protocol::{message::Message, AfterJoinSceneNotify, EnterGameResponse, JoinSceneNotify, SilenceNpcNotify, TransitionOptionPb};
+use wicked_waifus_protocol::{message::Message, AfterJoinSceneNotify, EnterGameResponse, FormationAttr, FormationAttrNotify, JoinSceneNotify, SilenceNpcNotify, TransitionOptionPb};
 use std::{
     cell::RefCell,
     collections::{HashMap, VecDeque},
@@ -21,7 +21,7 @@ pub enum LogicInput {
         player_id: i32,
         enter_rpc_id: u16,
         session: Arc<Session>,
-        player_save_data: PlayerSaveData,
+        player_save_data: Box<PlayerSaveData>,
     },
     RemovePlayer {
         player_id: i32,
@@ -135,7 +135,7 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
             player_save_data,
         } => {
             let mut player = state.players.entry(player_id).or_insert_with(|| {
-                RefCell::new(Player::load_from_save(player_save_data))
+                RefCell::new(Player::load_from_save(*player_save_data))
             }).borrow_mut();
 
             // TODO: shall we search in coop?
@@ -160,7 +160,8 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
                 player: &mut player,
                 world: &mut world,
             };
-            world_util::add_player_entities(&mut ctx);
+            
+            world_util::add_player_entities(ctx.player, ctx.world.get_mut_world_entity());
             let scene_info = world_util::build_scene_information(&mut ctx);
 
             ctx.player.notify(SilenceNpcNotify::default());
@@ -172,6 +173,27 @@ fn handle_logic_input(state: &mut LogicState, input: LogicInput) {
             });
 
             ctx.player.notify(AfterJoinSceneNotify::default());
+
+            ctx.player.notify(FormationAttrNotify {
+                duration: 1534854458,
+                formation_attrs: vec![
+                    FormationAttr {
+                        attr_id: 1,
+                        ratio: 2400,
+                        base_max_value: 24000,
+                        max_value: 24000,
+                        current_value: 24000,
+                    },
+                    FormationAttr {
+                        attr_id: 10,
+                        ratio: 2400,
+                        base_max_value: 15000,
+                        max_value: 15000,
+                        current_value: 15000,
+                    },
+                ],
+            });
+            
             ctx.player.notify(ctx.player.build_update_formation_notify());
 
             let map = logic::utils::quadrant_util::get_map(ctx.player.basic_info.cur_map_id);

@@ -29,13 +29,10 @@ dummy_handler! {
     GetDetectionLabelInfo;
     InfluenceInfo;
     ForgeInfo;
-    AchievementInfo;
     ExchangeReward;
     Liveness;
     PhotoMemory;
-    VisionEquipGroupInfo;
     UpdatePlayStationBlockAccount;
-    AdventureManual;
     Tower;
     ExploreProgress;
     ReportData;

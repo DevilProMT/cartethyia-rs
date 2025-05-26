@@ -1,11 +1,13 @@
 mod attribute;
 mod autonomous;
+mod character_attach;
 mod concomitant;
 mod entity_config;
 mod equip;
 mod fight_buff;
 mod fsm;
 mod interact;
+mod logic_state;
 mod monster_ai;
 mod movement;
 mod owner_player;
@@ -23,12 +25,14 @@ mod weapon_skin;
 
 pub use attribute::Attribute;
 pub use autonomous::Autonomous;
+pub use character_attach::CharacterAttach;
 pub use concomitant::Concomitant;
 pub use entity_config::EntityConfig;
 pub use equip::Equip;
 pub use fight_buff::FightBuff;
 pub use fsm::Fsm;
 pub use interact::Interact;
+pub use logic_state::LogicState;
 pub use monster_ai::MonsterAi;
 pub use movement::Movement;
 pub use owner_player::OwnerPlayer;

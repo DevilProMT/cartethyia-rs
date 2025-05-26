@@ -20,6 +20,9 @@ pub use skill::*;
 pub use teleport::*;
 pub use tutorial::*;
 pub use weapon::*;
+pub use achievement::*;
+pub use calabash::*;
+pub use attribute::*;
 
 mod advice;
 mod animal;
@@ -42,6 +45,9 @@ mod skill;
 mod teleport;
 mod tutorial;
 mod weapon;
+mod achievement;
+mod calabash;
+mod attribute;
 
 macro_rules! handle_request {
     ($($name:ident $(, $inner_package:ident)?;)*) => {
@@ -122,6 +128,17 @@ handle_request! {
     AnimalDrop;
     AnimalDestroy;
 
+    // Attribute
+    AttributeChanged;
+    FormationAttr;
+
+    // Achievement
+    AchievementInfo;
+    UpdateAchievementInfo;
+
+    // Calabash
+    IllustratedInfo;
+
     // Chat  (TODO: Review TODOs)
     PrivateChat;
     PrivateChatData;
@@ -143,6 +160,10 @@ handle_request! {
     EntityInteract;
     EntityFollowTrack;
     GetRewardTreasureBox;
+    // OrderApplyBuff;
+    // OrderRemoveBuff;
+    // ApplyGameplayEffect;
+    // RemoveGameplayEffect;
 
     // Friend (TODO: Implement them)
     FriendAll;
@@ -166,6 +187,15 @@ handle_request! {
     PhantomItem;
     ValidTimeItem;
     ItemExchangeInfo;
+    PhantomPutOn;
+    ItemDeprecate;
+    ItemLock;
+    VisionEquipGroupInfo;
+    AddVisionEquipGroup;
+    DeleteVisionEquipGroup;
+    ChangeVisionGroupName;
+    PutVisionGroupToTop;
+    ApplyVisionGroup;
 
     // Lord Gym (TODO: Review this on_..., port some from go)
     LordGymInfo;
@@ -200,7 +230,6 @@ handle_request! {
     RoleShowListUpdate;
     ClientCurrentRoleReport;
     RoleFavorList;
-    FormationAttr;
     UpdateFormation;
     UnlockRoleSkinList;
     RoleSkinChange;
@@ -273,12 +302,10 @@ handle_request! {
     MonthCard;
     InfluenceInfo;
     ForgeInfo;
-    AchievementInfo;
     ExchangeReward;
     Liveness;
     WebSign;
     PhotoMemory;
-    VisionEquipGroupInfo;
     UpdatePlayStationBlockAccount;
     AdventureManual;
     Tower;

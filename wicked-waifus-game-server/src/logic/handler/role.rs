@@ -5,13 +5,14 @@ use crate::logic::ecs::component::ComponentContainer;
 use crate::logic::player::ItemUsage;
 use crate::logic::role::{Role, RoleFormation};
 use crate::logic::thread_mgr::NetContext;
+use crate::logic::utils::world_util::add_player_entities;
 use crate::modify_component;
 use wicked_waifus_protocol::{
     ArrayIntInt, ClientCurrentRoleReportRequest, ClientCurrentRoleReportResponse,
     ERemoveEntityType, EntityAddNotify, EntityEquipSkinChangeNotify, EntityFlySkinChangeData,
     EntityPb, EntityRemoveInfo, EntityRemoveNotify, EquipFlySkinData, ErrorCode, FlySkinConfigData,
     FlySkinWearAllRoleRequest, FlySkinWearAllRoleResponse, FlySkinWearRequest, FlySkinWearResponse,
-    FormationAttrRequest, FormationAttrResponse, PbUpLevelRoleRequest, PbUpLevelRoleResponse,
+    PbUpLevelRoleRequest, PbUpLevelRoleResponse,
     PlayerMotionRequest, PlayerMotionResponse, RoleBreakThroughViewRequest,
     RoleBreakThroughViewResponse, RoleFavorListRequest, RoleFavorListResponse,
     RoleFlyEquipChangeNotify, RoleLevelUpViewRequest, RoleLevelUpViewResponse,
@@ -52,14 +53,6 @@ pub fn on_role_favor_list_request(
     response: &mut RoleFavorListResponse,
 ) {
     response.favor_list = vec![]; // TODO: add favor
-    response.error_code = ErrorCode::Success.into();
-}
-
-pub fn on_formation_attr_request(
-    _ctx: &NetContext,
-    _request: FormationAttrRequest,
-    response: &mut FormationAttrResponse,
-) {
     response.error_code = ErrorCode::Success.into();
 }
 
@@ -115,10 +108,7 @@ pub fn on_update_formation_request(
 
             if !added_roles.is_empty() {
                 // add new roles
-                ctx.player.notify(
-                    ctx.player
-                        .build_player_entity_add_notify(added_roles, world),
-                );
+                add_player_entities(ctx.player, world)
             }
 
             // send update group formation notify

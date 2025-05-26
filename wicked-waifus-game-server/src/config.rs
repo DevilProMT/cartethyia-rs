@@ -45,6 +45,7 @@ pub struct DefaultUnlocks {
     pub unlock_all_guides: bool,
     pub unlock_all_tutorials: bool,
     pub unlock_all_teleporter: bool,
+    pub unlock_max_energy: bool,
     pub unlock_all_role_skins: bool,
     pub unlock_all_weapon_skins: bool,
     pub unlock_all_fly_skins: bool,
