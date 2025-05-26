@@ -3,7 +3,6 @@ use std::io::BufReader;
 
 use paste::paste;
 
-pub use level_entity_config::LevelEntityConfigData;
 pub use misc_data::*;
 
 pub mod node_data;
@@ -11,6 +10,7 @@ pub mod pb_components;
 pub mod text_map_data;
 
 mod misc_data;
+mod level_entity_config;
 
 #[derive(thiserror::Error, Debug)]
 pub enum LoadDataError {
@@ -24,13 +24,14 @@ macro_rules! json_data {
     ($($table_type:ident;)*) => {
         $(paste! {
             mod [<$table_type:snake>];
-            pub use [<$table_type:snake>]::[<$table_type Data>];
         })*
 
         $(paste! {
             pub mod [<$table_type:snake _data>] {
+                pub use super::[<$table_type:snake>]::*;
+
                 use std::sync::OnceLock;
-                type Data = super::[<$table_type Data>];
+                type Data = super::[<$table_type:snake>]::[<$table_type Data>];
                 pub(crate) static TABLE: OnceLock<Vec<Data>> = OnceLock::new();
 
                 pub fn iter() -> std::slice::Iter<'static, Data> {
@@ -58,15 +59,16 @@ macro_rules! json_hash_table_data {
     ($($table_type:ident, $key_param:expr, $key_type:ty;)*) => {
         $(paste! {
             mod [<$table_type:snake>];
-            pub use [<$table_type:snake>]::[<$table_type Data>];
         })*
 
         $(paste! {
             pub mod [<$table_type:snake _data>] {
+                pub use super::[<$table_type:snake>]::*;
+
                 use std::collections::HashMap;
                 use std::sync::OnceLock;
 
-                pub(crate) type Data = super::[<$table_type Data>];
+                pub(crate) type Data = super::[<$table_type:snake>]::[<$table_type Data>];
                 pub(crate) static TABLE: OnceLock<HashMap<$key_type, Data>> = OnceLock::new();
 
                 pub fn iter() -> std::collections::hash_map::Iter<'static, $key_type, Data> {
@@ -139,9 +141,11 @@ json_data! {
     LevelPlayNodeData;
     LivenessTask;
     LordGym;
+    ModelConfigPreload;
     MonsterDetection;
     MonsterPropertyGrowth;
     Motion;
+    PhantomItem;
     QuestNodeData;
     ResonanceAmplification;
     ResonantChain;
@@ -166,19 +170,21 @@ json_hash_table_data! {
     AiBase, id, i32;
     AiStateMachineConfig, id, String;
     BlueprintConfig, blueprint_type, String;
+    Buff, id, i64;
     DragonPool, id, i32;
     DropPackage, id, i32;
     RoleExpItem, id, i32;
+    SummonCfg, blueprint_type, String;
     TemplateConfig, blueprint_type, String;
 }
 
-mod level_entity_config;
-
 pub mod level_entity_config_data {
+    pub use super::level_entity_config::*;
+
     use std::collections::HashMap;
     use std::sync::OnceLock;
 
-    pub(crate) type Data = super::LevelEntityConfigData;
+    pub(crate) type Data = LevelEntityConfigData;
     pub(crate) static TABLE: OnceLock<HashMap<String, Data>> = OnceLock::new();
 
     pub fn iter() -> std::collections::hash_map::Iter<'static, String, Data> {

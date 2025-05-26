@@ -1,4 +1,4 @@
-use wicked_waifus_data::BasePropertyData;
+use wicked_waifus_data::base_property_data::BasePropertyData;
 use wicked_waifus_protocol::EAttributeType;
 use std::collections::HashMap;
 

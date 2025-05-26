@@ -16,8 +16,8 @@ macro_rules! unimplemented_condition {
 
 pub fn check_condition(player: &Player,
                        entity_id: i64,
-                       level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
-                       template_config: &wicked_waifus_data::TemplateConfigData,
+                       level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+                       template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
                        element: Condition) -> bool {
     match element {
         Condition::CompareTimePeriod(condition) => unimplemented_condition! { condition },
@@ -142,8 +142,8 @@ fn compare_entity_state(player: &Player, entity_id: i64, condition: CompareEntit
 
 fn check_condition_group(player: &Player,
                          entity_id: i64,
-                         level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
-                         template_config: &wicked_waifus_data::TemplateConfigData,
+                         level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+                         template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
                          condition: CheckConditionGroup) -> bool {
 
     let mut check = true;

@@ -77,7 +77,6 @@ pub struct RoleSkinData {
     pub ui_mesh_id: i32,
     #[cfg(feature = "strict_json_fields")]
     pub role_body: String,
-    #[cfg(feature = "strict_json_fields")]
     #[serde(rename = "UiScenePerformanceABP")]
     pub ui_scene_performance_abp: String,
     #[cfg(feature = "strict_json_fields")]

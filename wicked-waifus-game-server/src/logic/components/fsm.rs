@@ -5,8 +5,8 @@ use indexmap::IndexMap;
 use wicked_waifus_protocol::{DFsm, DFsmBlackBoard, EntityComponentPb, EntityFsmComponentPb, FsmCustomBlackboardDatas};
 use wicked_waifus_protocol::entity_component_pb::ComponentPb;
 
-use wicked_waifus_data::{ai_base_data, ai_state_machine_config_data, AiStateMachineConfigData, StateMachineJson, StateMachineNode, StateMachineNodeCommon};
-
+use wicked_waifus_data::{ai_base_data, ai_state_machine_config_data, StateMachineJson, StateMachineNode, StateMachineNodeCommon};
+use wicked_waifus_data::ai_state_machine_config_data::AiStateMachineConfigData;
 use crate::logic::ecs::component::Component;
 
 static COMMON_FSM: OnceLock<AiStateMachineConfigData> = OnceLock::new();

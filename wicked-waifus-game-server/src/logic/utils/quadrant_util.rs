@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
-
-use wicked_waifus_data::LevelEntityConfigData;
+use wicked_waifus_data::level_entity_config_data::LevelEntityConfigData;
 
 pub(crate) struct StaticConfig {
     edge_size: f32,

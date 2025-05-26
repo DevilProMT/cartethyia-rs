@@ -7,7 +7,8 @@ use crate::logic::utils::growth_utils::get_role_props_by_level;
 use crate::logic::utils::load_role_info::load_key_value;
 pub use formation::RoleFormation;
 use wicked_waifus_commons::time_util;
-use wicked_waifus_data::{role_info_data, BasePropertyData};
+use wicked_waifus_data::base_property_data::BasePropertyData;
+use wicked_waifus_data::role_info_data;
 use wicked_waifus_protocol_internal::{RoleData, RoleStats};
 use crate::logic::player::Element;
 

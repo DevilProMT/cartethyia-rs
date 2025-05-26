@@ -1,10 +1,9 @@
-use wicked_waifus_data::BasePropertyData;
 use wicked_waifus_protocol::{
     entity_component_pb::ComponentPb, AttrData, AttributeComponentPb, EAttributeType,
     EntityComponentPb, LivingStatus,
 };
 use std::collections::HashMap;
-
+use wicked_waifus_data::base_property_data::BasePropertyData;
 use crate::logic::ecs::component::Component;
 use crate::logic::utils::load_role_info::attribute_from_data;
 

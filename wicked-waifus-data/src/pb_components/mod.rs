@@ -9,6 +9,7 @@ pub mod condition;
 pub mod entity_state;
 pub mod flow;
 pub mod interact;
+pub mod model;
 pub mod monster;
 pub mod option;
 pub mod reward;
@@ -69,8 +70,7 @@ pub struct ComponentsData {
     pub guide_line_creator_component: Option<serde_json::Value>,
     #[cfg(feature = "strict_json_fields")]
     pub photo_target_component: Option<serde_json::Value>,
-    #[cfg(feature = "strict_json_fields")]
-    pub model_component: Option<serde_json::Value>,
+    pub model_component: Option<model::ModelComponent>,
     #[cfg(feature = "strict_json_fields")]
     pub entity_group_component: Option<serde_json::Value>,
     #[cfg(feature = "strict_json_fields")]
@@ -222,14 +222,51 @@ pub struct ComponentsData {
 impl ComponentsData {
     pub fn merge_with_template(&self, template: &Self) -> Self {
         Self {
-            base_info_component: self.base_info_component.as_ref().or(template.base_info_component.as_ref()).cloned(),
-            ai_component: self.ai_component.as_ref().or(template.ai_component.as_ref()).cloned(),
-            attribute_component: self.attribute_component.as_ref().or(template.attribute_component.as_ref()).cloned(),
-            teleport_component: self.teleport_component.as_ref().or(template.teleport_component.as_ref()).cloned(),
-            monster_component: self.monster_component.as_ref().or(template.monster_component.as_ref()).cloned(),
-            interact_component: self.interact_component.as_ref().or(template.interact_component.as_ref()).cloned(),
-            entity_state_component: self.entity_state_component.as_ref().or(template.entity_state_component.as_ref()).cloned(),
-            reward_component: self.reward_component.as_ref().or(template.reward_component.as_ref()).cloned(),
+            base_info_component: self
+                .base_info_component
+                .as_ref()
+                .or(template.base_info_component.as_ref())
+                .cloned(),
+            ai_component: self
+                .ai_component
+                .as_ref()
+                .or(template.ai_component.as_ref())
+                .cloned(),
+            attribute_component: self
+                .attribute_component
+                .as_ref()
+                .or(template.attribute_component.as_ref())
+                .cloned(),
+            teleport_component: self
+                .teleport_component
+                .as_ref()
+                .or(template.teleport_component.as_ref())
+                .cloned(),
+            monster_component: self
+                .monster_component
+                .as_ref()
+                .or(template.monster_component.as_ref())
+                .cloned(),
+            interact_component: self
+                .interact_component
+                .as_ref()
+                .or(template.interact_component.as_ref())
+                .cloned(),
+            entity_state_component: self
+                .entity_state_component
+                .as_ref()
+                .or(template.entity_state_component.as_ref())
+                .cloned(),
+            reward_component: self
+                .reward_component
+                .as_ref()
+                .or(template.reward_component.as_ref())
+                .cloned(),
+            model_component: self
+                .model_component
+                .as_ref()
+                .or(template.model_component.as_ref())
+                .cloned(),
         }
     }
 }

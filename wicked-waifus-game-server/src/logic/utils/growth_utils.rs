@@ -1,4 +1,5 @@
-use wicked_waifus_data::{BasePropertyData, base_property_data, monster_property_growth_data, role_property_growth_data};
+use wicked_waifus_data::{base_property_data, monster_property_growth_data, role_property_growth_data};
+use wicked_waifus_data::base_property_data::BasePropertyData;
 
 pub fn get_role_props_by_level(id: i32, level: i32, breach: i32) -> BasePropertyData {
     let mut base_props = get_role_props_or_default(id).clone();

@@ -20,8 +20,8 @@ macro_rules! unimplemented_action {
 
 pub fn perform_action(player: &mut Player,
                       entity_id: i64,
-                      level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
-                      template_config: &wicked_waifus_data::TemplateConfigData,
+                      level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+                      template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
                       element: Action) {
     match element {
         Action::SetBattleState(action) => unimplemented_action! { action },
@@ -212,8 +212,8 @@ pub fn perform_action(player: &mut Player,
 }
 
 fn collect_action(player: &mut Player,
-                  level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
-                  template_config: &wicked_waifus_data::TemplateConfigData) {
+                  level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+                  template_config: &wicked_waifus_data::template_config_data::TemplateConfigData) {
     if let Some(reward_component) = level_entity_data.components_data.reward_component
         .as_ref()
         .or(template_config.components_data.reward_component.as_ref()) {
@@ -262,8 +262,8 @@ fn unlock_teleport_trigger(player: &mut Player, action: UnlockTeleportTrigger) {
 
 fn change_self_entity_state(player: &mut Player,
                             entity_id: i64,
-                            level_entity_data: &wicked_waifus_data::LevelEntityConfigData,
-                            template_config: &wicked_waifus_data::TemplateConfigData,
+                            level_entity_data: &wicked_waifus_data::level_entity_config_data::LevelEntityConfigData,
+                            template_config: &wicked_waifus_data::template_config_data::TemplateConfigData,
                             action: ChangeSelfEntityState) {
     let state = tag_utils::get_tag_id_by_name(action.entity_state.as_str());
 

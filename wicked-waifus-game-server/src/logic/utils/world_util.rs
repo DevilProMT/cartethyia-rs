@@ -6,9 +6,9 @@ use wicked_waifus_protocol::{
 
 use wicked_waifus_data::pb_components::ComponentsData;
 use wicked_waifus_data::{
-    blueprint_config_data, template_config_data, EntityLogic, EntityType, LevelEntityConfigData,
+    blueprint_config_data, template_config_data, EntityLogic, EntityType,
 };
-
+use wicked_waifus_data::level_entity_config_data::LevelEntityConfigData;
 use crate::logic::components::{Autonomous, Fsm, Interact, MonsterAi, ParaglidingSkin, SoarWingSkin, StateTag, Tag, WeaponSkin};
 use crate::logic::ecs::entity::EntityBuilder;
 use crate::logic::ecs::world::World;
