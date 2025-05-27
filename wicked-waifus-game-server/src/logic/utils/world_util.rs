@@ -356,7 +356,7 @@ fn build_player_info_list(world: &World) -> Vec<ScenePlayerInformation> {
                 EntityConfig
             )
             .into_iter()
-            .filter(|(_, _, owner, _)| owner.0 == sp.player_id);
+            .filter(|(_, e, owner, _)| owner.0 == sp.player_id && e.entity_type == EEntityType::Player);
 
             ScenePlayerInformation {
                 cur_role: cur_role_id,
