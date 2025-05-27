@@ -39,14 +39,10 @@ pub fn on_entity_active_request(
     };
 
     // TODO: Remove attribute
-    if let (Some(position), Some(_attribute), Some(e)) =
-        query_components!(world, request.entity_id, Position, Attribute, PlayerOwnedEntityMarker)
+    if let (Some(position), Some(_attribute), Some(v)) =
+        query_components!(world, request.entity_id, Position, Attribute, Visibility)
     {
-        if e.entity_type == EEntityType::Player || e.entity_type == EEntityType::Monster{
-            response.is_visible = true;
-        }else {
-            response.is_visible = false;
-        }
+        response.is_visible = v.is_visible;
         
         response.pos = Some(position.0.get_position_protobuf());
         response.rot = Some(position.0.get_rotation_protobuf());
