@@ -41,3 +41,4 @@ unlock_all_role_skins = false
 unlock_all_weapon_skins = false
 unlock_all_fly_skins = false
 unlock_all_wing_skins = false
+unlock_all_phantoms = false

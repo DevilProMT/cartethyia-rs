@@ -1,18 +1,23 @@
-use crate::logic::player::Player;
+use crate::logic::{ecs::world::WorldEntity, player::Player};
 use crate::logic::thread_mgr::NetContext;
+use wicked_waifus_data::base_property_data;
+use wicked_waifus_data::phantom_item_data::PhantomItemData;
+use wicked_waifus_data::summon_cfg_data::{self, SummonCfgData};
+use wicked_waifus_data::template_config_data::TemplateConfigData;
+use wicked_waifus_protocol::summon::ESummonType;
+use crate::logic::ecs::entity::{Entity};
 use wicked_waifus_protocol::{
-    AddVisionEquipGroupRequest, AddVisionEquipGroupResponse, ApplyVisionGroupRequest,
-    ApplyVisionGroupResponse, ChangeVisionGroupNameRequest, ChangeVisionGroupNameResponse,
-    DeleteVisionEquipGroupRequest, DeleteVisionEquipGroupResponse, ErrorCode, ItemDeprecateRequest,
-    ItemDeprecateResponse, ItemExchangeInfo, ItemExchangeInfoRequest, ItemExchangeInfoResponse,
-    ItemLockRequest, ItemLockResponse, NormalItemRequest, NormalItemResponse, PhantomItem,
-    PhantomItemRequest, PhantomItemResponse, PhantomPropInfo, PhantomPutOnRequest,
-    PhantomPutOnResponse, PutVisionGroupToTopRequest, PutVisionGroupToTopResponse,
-    RefreshVisionEquipGroupData as ProtoRefreshVisionEquipGroupData, RolePhantomEquipInfo,
-    RolePhantomPropInfo, VisionEquipGroupInfoRequest, VisionEquipGroupInfoResponse, WeaponItem,
-    WeaponItemRequest, WeaponItemResponse,
+    AddVisionEquipGroupRequest, AddVisionEquipGroupResponse, ApplyVisionGroupRequest, ApplyVisionGroupResponse, ChangeVisionGroupNameRequest, ChangeVisionGroupNameResponse, DeleteVisionEquipGroupRequest, DeleteVisionEquipGroupResponse, EEntityType, EntityAddNotify, EntityConfigType, EntityPb, EntityState, ErrorCode, FightBuffInformation, ItemDeprecateRequest, ItemDeprecateResponse, ItemExchangeInfo, ItemExchangeInfoRequest, ItemExchangeInfoResponse, ItemLockRequest, ItemLockResponse, NormalItemRequest, NormalItemResponse, PhantomItem, PhantomItemRequest, PhantomItemResponse, PhantomPropInfo, PhantomPutOnRequest, PhantomPutOnResponse, PutVisionGroupToTopRequest, PutVisionGroupToTopResponse, RefreshVisionEquipGroupData as ProtoRefreshVisionEquipGroupData, RolePhantomEquipInfo, RolePhantomPropInfo, VisionEquipGroupInfoRequest, VisionEquipGroupInfoResponse, VisionSkillChangeNotify, VisionSkillInformation, WeaponItem, WeaponItemRequest, WeaponItemResponse
 };
 use wicked_waifus_protocol_internal::RefreshVisionEquipGroupData;
+use crate::logic::{
+    components::{
+        Attribute, EntityConfig, Equip, FightBuff, Movement, OwnerPlayer, PlayerOwnedEntityMarker,
+        Position, RoleSkin, Visibility, VisionSkill, Summoner
+    },
+    ecs::component::ComponentContainer,
+};
+use crate::modify_component;
 
 const MAX_POSITIONS: usize = 5;
 
@@ -33,9 +38,133 @@ fn update_incr_id_owners(player: &mut Player, position: i32, new_inc_id: i32, ne
     }
 }
 
+pub fn summon_vision_phantom(
+    player: &Player, 
+    world: &mut WorldEntity, 
+    template_cfg: &TemplateConfigData, 
+    phantom_data: &PhantomItemData, 
+    summon_cfg: &SummonCfgData,
+    owner_entity: i64
+) -> (Entity, Vec<i64>) {
+    let mut vision_buffs: Vec<FightBuffInformation> = Vec::new();
+    let vision_config_id = template_cfg.id;
+
+    let vision_entity = world.create_entity(
+        vision_config_id,
+        EEntityType::Vision.into(),
+        player.basic_info.cur_map_id,
+    );
+
+    for buff_id in &summon_cfg.born_buff_id {
+        vision_buffs.push(world.create_buff(vision_entity.entity_id, *buff_id));
+    }
+
+    (world
+        .create_builder(vision_entity)
+        .with(ComponentContainer::PlayerOwnedEntityMarker(PlayerOwnedEntityMarker {
+            entity_type: EEntityType::Vision,
+        }))
+        .with(ComponentContainer::EntityConfig(EntityConfig {
+            camp: 0,
+            config_id: vision_config_id,
+            config_type: EntityConfigType::Template,
+            entity_type: EEntityType::Vision,
+            entity_state: EntityState::Born,
+        }))
+        .with(ComponentContainer::OwnerPlayer(OwnerPlayer(
+            player.basic_info.id,
+        )))
+        .with(ComponentContainer::Position(Position(
+            player.location.position.clone(),
+        )))
+        .with(ComponentContainer::Visibility(Visibility {
+            is_visible: false,
+            is_actor_visible: true,
+        }))
+        .with(ComponentContainer::Attribute(Attribute::from_data(
+            base_property_data::iter()
+                .find(|d| d.id == template_cfg.components_data.attribute_component.clone().unwrap().property_id.unwrap())
+                .unwrap(),
+            None,
+            None,
+        )))
+        .with(ComponentContainer::FightBuff(FightBuff { fight_buff_infos: vision_buffs, ..Default::default() }))
+        .with(ComponentContainer::Summoner(Summoner {
+            summoner_id: owner_entity,
+            summon_cfg_id: phantom_data.skill_id,
+            summon_skill_id: phantom_data.skill_id,
+            summon_type: ESummonType::ESummonTypeConcomitantVision.into()
+        }))
+        .build(), summon_cfg.born_buff_id.clone()
+    )
+}
+
+fn add_phantom_skill_for_role(player: &mut Player, world: &mut WorldEntity, inc_id: i32, role_id: i32) {
+    let Some(id) = player
+        .inventory
+        .get_phantom_id(inc_id) else {
+        return;
+    };
+
+    let entity_id = world.get_entity_id(role_id);
+
+    if let Some(phantom_data) = wicked_waifus_data::phantom_item_data::iter()
+        .find(|data| data.item_id == id)
+    {
+       if let Some(summon_data) = summon_cfg_data::iter().find(|(_, r)| r.id == phantom_data.skill_id)
+       {
+            let template_cfg = wicked_waifus_data::template_config_data::iter()
+                .find(|cfg| cfg.1.blueprint_type == summon_data.1.blueprint_type)
+                .unwrap()
+                .1;
+            let (vision, _) = summon_vision_phantom(
+                    player,
+                    world,
+                    template_cfg,
+                    phantom_data,
+                    summon_data.1,
+                    entity_id as i64,
+                );
+
+            let mut pb = EntityPb {
+                id: vision.entity_id as i64,
+                ..Default::default()
+            };
+
+            world
+                .get_entity_components(vision.entity_id)
+                .into_iter()
+                .for_each(|comp| comp.set_pb_data(&mut pb));
+            player.notify(EntityAddNotify {
+                entity_pbs: vec![pb],
+                remove_tag_ids: true,
+            });
+            player.notify(VisionSkillChangeNotify {
+                entity_id: entity_id,
+                vision_entity_id: vision.entity_id as i64,
+                vision_skill_infos: vec![
+                    VisionSkillInformation {
+                        skill_id: phantom_data.skill_id,
+                        level: 25,
+                        quality: 5,
+                        ..Default::default()
+                    },
+                    VisionSkillInformation {
+                        skill_id: player.explore_tools.active_explore_skill,
+                        ..Default::default()
+                    },
+                ],
+                ..Default::default()
+            })
+       };
+       
+    }
+}
+
 // Check duplicate echo :wheelchair:
 fn update_equipment_for_role(
     player: &mut Player,
+    world: &mut WorldEntity,
     role_id: i32,
     position: i32,
     new_inc_id: i32,
@@ -48,8 +177,6 @@ fn update_equipment_for_role(
         if duplicate {
             return Err(ErrorCode::ErrPhantomEquipDuplicate);
         }
-    }
-    if new_inc_id != 0 {
         if let Some((_, prev)) = player
             .role_list
             .iter_mut()
@@ -58,6 +185,10 @@ fn update_equipment_for_role(
             let old_id = prev.phantom_map.insert(position, 0).unwrap_or(0);
             player.used_incr_ids.remove(&old_id);
         }
+        if position == 0 {
+            add_phantom_skill_for_role(player, world, new_inc_id, role_id);
+        }
+        
     }
     if let Some(rm) = player.role_list.get_mut(&role_id) {
         let old = rm.phantom_map.insert(position, 0).unwrap_or(0);
@@ -247,6 +378,7 @@ pub fn on_apply_vision_group_request(
     response: &mut ApplyVisionGroupResponse,
 ) {
     let player = &mut ctx.player;
+    let world = &mut ctx.world;
 
     let idx = request.index as usize;
     if request.index < 0 || idx >= player.vision_equip_groups.len() {
@@ -262,12 +394,12 @@ pub fn on_apply_vision_group_request(
     let inc_ids = player.vision_equip_groups[idx].inc_id.clone();
 
     for pos in 0..MAX_POSITIONS as i32 {
-        let _ = update_equipment_for_role(player, role_id, pos, 0);
+        let _ = update_equipment_for_role(player,world.get_mut_world_entity(), role_id, pos, 0);
     }
     let mut error = None;
     for (pos, &inc_id) in inc_ids.iter().enumerate() {
         let pos_i32 = pos as i32;
-        if let Err(e) = update_equipment_for_role(player, role_id, pos_i32, inc_id) {
+        if let Err(e) = update_equipment_for_role(player,world.get_mut_world_entity(), role_id, pos_i32, inc_id) {
             error = Some(e);
             break;
         }
@@ -308,74 +440,7 @@ pub fn on_phantom_item_request(
 ) {
     let player = &mut ctx.player;
 
-    // TODO properly echo its for test only
-    let mut phantom_items = Vec::new();
-    let mut incr_id = 1;
-
-    let phantom_main_prop = vec![
-        PhantomPropInfo {
-            phantom_prop_id: 5003, // PhantomMainProperty.json
-            value: 3300, // random value (33 in game)
-        },
-        PhantomPropInfo {
-            phantom_prop_id: 30001,
-            value: 150, // 150 in game
-        },
-    ];
-
-    let phantom_sub_prop = vec![
-        PhantomPropInfo {
-            phantom_prop_id: 14, // PhantomSubProperty.json
-            value: 2100,
-        },
-        PhantomPropInfo {
-            phantom_prop_id: 15,
-            value: 1240,
-        },
-        PhantomPropInfo {
-            phantom_prop_id: 16,
-            value: 1160,
-        },
-        PhantomPropInfo {
-            phantom_prop_id: 18,
-            value: 1160,
-        },
-        PhantomPropInfo {
-            phantom_prop_id: 19,
-            value: 1160,
-        },
-    ];
-
-    for data in wicked_waifus_data::phantom_item_data::iter() {
-        if data.item_id % 10 != 5 {
-            continue;
-        }
-        for &fetter_group_id in &data.fetter_group {
-            let phantom = PhantomItem {
-                id: data.item_id,
-                incr_id,
-                phantom_level: 25,
-                phantom_exp: 0,
-                phantom_main_prop: phantom_main_prop.clone(),
-                phantom_sub_prop: phantom_sub_prop.clone(),
-                fetter_group_id,
-                ..Default::default()
-            };
-            phantom_items.push(phantom);
-            incr_id += 1;
-        }
-        //tracing::info!("adding phantom id: {:#?}, incr_id: {:#?}", data.item_id, incr_id);
-    }
-
-    // let equip_phantoms: Vec<RolePhantomEquipInfo> = vec![(1207, 1), (1409, 2)]
-    //     .into_iter()
-    //     .map(|(role_id, incr_id)| RolePhantomEquipInfo {
-    //         role_id,
-    //         phantom_item_incr_id: vec![incr_id],
-    //     })
-    //     .collect();
-
-    response.phantom_item_list = phantom_items;
+    response.phantom_item_list = player.inventory.to_phantom_item_list();
     response.equip_info_list = player
         .role_list
         .values()
@@ -404,6 +469,7 @@ pub fn on_phantom_put_on_request(
     response: &mut PhantomPutOnResponse,
 ) {
     let player = &mut ctx.player;
+    let world = &mut ctx.world;
 
     let position = request.pos;
     if position < 0 || position >= MAX_POSITIONS as i32 {
@@ -418,7 +484,7 @@ pub fn on_phantom_put_on_request(
         .get(&role_id)
         .map(|r| r.phantom_map.clone());
 
-    let result = update_equipment_for_role(player, role_id, position, request.inc_id);
+    let result = update_equipment_for_role(player, world.get_mut_world_entity(), role_id, position, request.inc_id);
     if let Err(err) = result {
         player.used_incr_ids = backup_used;
         if let Some(map) = backup_map {

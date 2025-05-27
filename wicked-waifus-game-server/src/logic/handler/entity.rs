@@ -1,9 +1,5 @@
 use wicked_waifus_protocol::{
-    EntityAccessInfo, EntityAccessRangeRequest, EntityAccessRangeResponse, EntityActiveRequest,
-    EntityActiveResponse, EntityFollowTrackRequest, EntityFollowTrackResponse,
-    EntityInteractRequest, EntityInteractResponse, EntityOnLandedRequest, EntityOnLandedResponse,
-    EntityPb, EntityPositionRequest, EntityPositionResponse, ErrorCode,
-    GetRewardTreasureBoxRequest, GetRewardTreasureBoxResponse, MovePackagePush,
+    EEntityType, EntityAccessInfo, EntityAccessRangeRequest, EntityAccessRangeResponse, EntityActiveRequest, EntityActiveResponse, EntityFollowTrackRequest, EntityFollowTrackResponse, EntityInteractRequest, EntityInteractResponse, EntityOnLandedRequest, EntityOnLandedResponse, EntityPb, EntityPositionRequest, EntityPositionResponse, ErrorCode, GetRewardTreasureBoxRequest, GetRewardTreasureBoxResponse, MovePackagePush
 };
 
 use wicked_waifus_data::pb_components::option::OptionType;
@@ -43,10 +39,15 @@ pub fn on_entity_active_request(
     };
 
     // TODO: Remove attribute
-    if let (Some(position), Some(_attribute)) =
-        query_components!(world, request.entity_id, Position, Attribute)
+    if let (Some(position), Some(_attribute), Some(e)) =
+        query_components!(world, request.entity_id, Position, Attribute, PlayerOwnedEntityMarker)
     {
-        response.is_visible = true;
+        if e.entity_type == EEntityType::Player || e.entity_type == EEntityType::Monster{
+            response.is_visible = true;
+        }else {
+            response.is_visible = false;
+        }
+        
         response.pos = Some(position.0.get_position_protobuf());
         response.rot = Some(position.0.get_rotation_protobuf());
 

@@ -50,6 +50,7 @@ pub struct DefaultUnlocks {
     pub unlock_all_weapon_skins: bool,
     pub unlock_all_fly_skins: bool,
     pub unlock_all_wing_skins: bool,
+    pub unlock_all_phantoms: bool,
 }
 
 impl TomlConfig for ServiceConfig {

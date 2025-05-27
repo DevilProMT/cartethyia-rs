@@ -1,15 +1,18 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 use std::sync::atomic::AtomicI32;
-use wicked_waifus_protocol::{ArrayIntInt, NormalItem, WeaponItem};
+use wicked_waifus_protocol::{ArrayIntInt, NormalItem, PhantomItem, WeaponItem};
 
 use crate::config;
 use crate::logic::utils::seq_utils::{SequenceGenerator, Sequencer};
-use wicked_waifus_protocol_internal::{PlayerInventoryData, PlayerInventoryWeaponData};
+use wicked_waifus_protocol_internal::{PlayerInventoryData, PlayerInventoryWeaponData, PlayerInventoryPhantomData};
 
 pub struct PlayerInventory {
     items: HashMap<i32, i32>,
     weapons_seq: SequenceGenerator<i32, AtomicI32>,
     weapons: HashMap<i32, PlayerInventoryWeaponData>,
+    phantoms_seq: SequenceGenerator<i32, AtomicI32>,
+    phantoms: HashMap<i32, PlayerInventoryPhantomData>
 }
 
 pub struct ItemUsage {
@@ -38,8 +41,10 @@ impl PlayerInventory {
     pub fn load_from_save(data: PlayerInventoryData) -> Self {
         Self {
             weapons_seq: SequenceGenerator::from_data(&data.weapons),
+            phantoms_seq: SequenceGenerator::from_data(&data.phantoms),
             items: data.items.clone(),
             weapons: data.weapons.clone(),
+            phantoms: data.phantoms.clone(),
         }
     }
 
@@ -47,6 +52,7 @@ impl PlayerInventory {
         PlayerInventoryData {
             items: self.items.clone(),
             weapons: self.weapons.clone(),
+            phantoms: self.phantoms.clone(),
         }
     }
 
@@ -212,6 +218,28 @@ impl PlayerInventory {
             .map(|weapon_data| (weapon_data.id, weapon_data.breach))
     }
 
+    pub fn to_phantom_item_list(&self) -> Vec<PhantomItem> {
+        self.phantoms
+            .iter()
+            .map(|(&inc_id,data)| PhantomItem {
+                id:data.id,
+                incr_id: inc_id,
+                func_value: data.func_value,
+                phantom_level: data.level,
+                phantom_exp: data.exp,
+                fetter_group_id: data.fetter_group_id,
+                ..Default::default()
+
+            })
+            .collect()
+    }
+
+    pub fn get_phantom_id(&self, inc_id: i32) -> Option<i32> {
+        self.phantoms
+            .get(&inc_id)
+            .map(|phantom_data| (phantom_data.id))
+    }
+
     #[inline(always)]
     fn add_internal(&mut self, id: i32, quantity: i32) -> i32 {
         *self
@@ -246,6 +274,7 @@ impl PlayerInventory {
 impl Default for PlayerInventory {
     fn default() -> Self {
         let mut weapons_seq = SequenceGenerator::new();
+        let mut phantoms_seq = SequenceGenerator::new();
         let default_unlocks = &config::get_config().default_unlocks;
         let weapons: HashMap<i32, PlayerInventoryWeaponData> =
             match default_unlocks.unlock_all_weapons {
@@ -307,10 +336,35 @@ impl Default for PlayerInventory {
                     .collect::<HashMap<_, _>>(),
                 false => Default::default(),
             };
+        let phantoms: HashMap<i32, PlayerInventoryPhantomData> =
+            if default_unlocks.unlock_all_phantoms {
+                wicked_waifus_data::phantom_item_data::iter()
+                    .filter(|data| data.item_id % 10 == 5)
+                    .flat_map(|data| {
+                        let phantom_incr_id = phantoms_seq.take_id();
+                        data.fetter_group.iter().map(move |&fetter_group_id| {
+                            (
+                                phantom_incr_id,
+                                PlayerInventoryPhantomData {
+                                    id: data.item_id,
+                                    func_value: 0,
+                                    level: 25,
+                                    fetter_group_id:fetter_group_id,
+                                    ..Default::default()
+                                },
+                            )
+                        })
+                    })
+                    .collect()
+            } else {
+                HashMap::new()
+            };
         Self {
             items: HashMap::new(),
             weapons_seq,
             weapons,
+            phantoms_seq: phantoms_seq,
+            phantoms,
         }
     }
 }

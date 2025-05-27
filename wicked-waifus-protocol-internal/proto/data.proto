@@ -148,9 +148,21 @@ message PlayerInventoryWeaponData {
   int32 role_id = 7;
 }
 
+message PlayerInventoryPhantomData {
+  int32 id = 1;
+  int32 func_value = 2;
+  int32 level = 3;
+  int32 exp = 4;
+  int32 fetter_group_id = 5;
+  map<int32,int32> attributes = 6;
+  map<int32,int32> sub_attributes = 7;
+  int32 role_id = 8;
+}
+
 message PlayerInventoryData {
   map<int32, int32> items = 1;
   map<int32, PlayerInventoryWeaponData> weapons = 2;
+  map<int32, PlayerInventoryPhantomData> phantoms = 3;
 }
 
 message PlayerTeleportData {
